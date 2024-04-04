@@ -340,6 +340,7 @@ dependencies = [
  "clap",
  "env_logger",
  "log",
+ "regex",
  "rsheet_lib",
 ]
 

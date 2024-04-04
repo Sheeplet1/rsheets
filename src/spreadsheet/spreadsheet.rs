@@ -2,10 +2,8 @@ use std::collections::HashMap;
 
 use rsheet_lib::command_runner::CellValue;
 
-use super::cell::Cell;
-
 pub struct Spreadsheet {
-    cells: HashMap<String, Cell>,
+    cells: HashMap<String, CellValue>,
 }
 
 impl Spreadsheet {
@@ -16,13 +14,19 @@ impl Spreadsheet {
     }
 
     pub fn set(&mut self, key: String, value: CellValue) {
-        self.cells.insert(key, Cell::new(value));
+        self.cells.insert(key, value);
     }
 
-    pub fn get(&mut self, key: String) -> Option<&Cell> {
+    pub fn get(&mut self, key: String) -> CellValue {
         match self.cells.get(&key) {
-            Some(cell) => Some(cell),
-            None => None,
+            Some(cell) => cell.clone(),
+            None => CellValue::None,
         }
+    }
+}
+
+impl Default for Spreadsheet {
+    fn default() -> Self {
+        Self::new()
     }
 }
