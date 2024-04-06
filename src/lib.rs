@@ -9,7 +9,7 @@ use std::error::Error;
 
 use log::info;
 
-use crate::spreadsheet::is_valid_cell_name;
+use crate::spreadsheet::is_valid_cell;
 
 pub fn start_server<M>(mut manager: M) -> Result<(), Box<dyn Error>>
 where
@@ -27,7 +27,8 @@ where
             continue;
         }
 
-        match args[0] {
+        let command = args[0];
+        match command {
             "get" => {
                 // Check that number of arguments is correct
                 if args.len() < 2 {
@@ -37,9 +38,9 @@ where
                     continue;
                 }
 
-                // check that cell_name is valid
+                // check that cell is valid
                 let cell = args[1];
-                if !is_valid_cell_name(cell) {
+                if !is_valid_cell(cell) {
                     // TODO: Extract common errors into a separate module
                     send.write_message(Reply::Error("Invalid cell provided".to_string()))?;
                 }
@@ -49,6 +50,7 @@ where
                 send.write_message(Reply::Value(cell.to_string(), cell_val))?;
             }
             "set" => {
+                // check that the number of arguments is correct
                 if args.len() < 3 {
                     send.write_message(Reply::Error(
                         "Invalid number of arguments for set".to_string(),
@@ -56,8 +58,9 @@ where
                     continue;
                 }
 
+                // check that the cell is valid
                 let cell = args[1];
-                if !is_valid_cell_name(cell) {
+                if !is_valid_cell(cell) {
                     send.write_message(Reply::Error("Invalid cell provided".to_string()))?;
                 }
 
@@ -68,9 +71,9 @@ where
                 let cell_val = CommandRunner::new(&expr).run(&variables);
                 spreadsheet.set(cell.to_string(), cell_val);
             }
-            _ => todo!(),
+            _ => {
+                send.write_message(Reply::Error("Invalid command".to_string()))?;
+            }
         }
-
-        // send.write_message(Reply::Error(format!("{msg:?}")))?;
     }
 }
