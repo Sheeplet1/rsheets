@@ -1,16 +1,22 @@
+use dashmap::DashMap;
+use once_cell::sync::Lazy;
 use regex::Regex;
-use std::collections::HashMap;
 
 use rsheet_lib::command_runner::CellValue;
 
+/// Lazy static pattern for cell names. Using Lazy to avoid multiple
+/// regex compilations, which could end up expensive.
+static CELL_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r"^[A-Z]+[0-9]+$").unwrap());
+
 pub struct Spreadsheet {
-    cells: HashMap<String, CellValue>,
+    // Dashmap is used for concurrent access to cells.
+    cells: DashMap<String, CellValue>,
 }
 
 impl Spreadsheet {
     pub fn new() -> Self {
         Self {
-            cells: HashMap::new(),
+            cells: DashMap::new(),
         }
     }
 
@@ -31,11 +37,7 @@ impl Default for Spreadsheet {
         Self::new()
     }
 }
-pub fn new() -> Spreadsheet {
-    Spreadsheet::new()
-}
 
 pub fn is_valid_cell(cell_name: &str) -> bool {
-    let regex = Regex::new(r"^[A-Z]+[0-9]+$").unwrap();
-    regex.is_match(cell_name)
+    CELL_PATTERN.is_match(cell_name)
 }

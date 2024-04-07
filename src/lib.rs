@@ -4,6 +4,7 @@ mod variables;
 
 use rsheet_lib::connect::{Manager, Reader, Writer};
 use rsheet_lib::replies::Reply;
+use spreadsheet::Spreadsheet;
 
 use std::error::Error;
 
@@ -14,7 +15,7 @@ where
     M: Manager,
 {
     let (mut recv, mut send) = manager.accept_new_connection().unwrap();
-    let mut spreadsheet = spreadsheet::new();
+    let mut spreadsheet = Spreadsheet::new();
     loop {
         info!("Just got message");
         let msg = recv.read_message()?;
