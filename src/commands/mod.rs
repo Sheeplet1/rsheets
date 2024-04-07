@@ -20,7 +20,7 @@ pub fn get(spreadsheet: &Arc<Spreadsheet>, args: Vec<&str>) -> Result<(String, C
         ));
     }
 
-    // check that cell is valid
+    // Check that cell is valid
     let cell = args[1];
     if !is_valid_cell(cell) {
         return Err(Reply::Error("Invalid cell provided.".to_string()));
@@ -38,6 +38,7 @@ pub fn set(spreadsheet: &Arc<Spreadsheet>, args: Vec<&str>) -> Result<(), Reply>
         ));
     }
 
+    // Check that the cell is valid.
     let cell = args[1];
     if !is_valid_cell(cell) {
         return Err(Reply::Error("Invalid cell provided.".to_string()));
