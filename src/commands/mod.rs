@@ -11,6 +11,7 @@ use crate::{
     variables::{categorize_variable, VariableType},
 };
 
+/// Gets the value of a cell in the spreadsheet.
 pub fn get(spreadsheet: &mut Spreadsheet, args: Vec<&str>) -> Result<(String, CellValue), Reply> {
     // Check that number of arguments is correct
     if args.len() < 2 {
@@ -29,6 +30,7 @@ pub fn get(spreadsheet: &mut Spreadsheet, args: Vec<&str>) -> Result<(String, Ce
     Ok((cell.to_string(), cell_val))
 }
 
+/// Sets the value of a cell in the spreadsheet.
 pub fn set(spreadsheet: &mut Spreadsheet, args: Vec<&str>) -> Result<(), Reply> {
     if args.len() < 3 {
         return Err(Reply::Error(
@@ -50,6 +52,7 @@ pub fn set(spreadsheet: &mut Spreadsheet, args: Vec<&str>) -> Result<(), Reply> 
 
     for var in var_vec {
         let var_type: VariableType = categorize_variable(&var);
+
         match var_type {
             VariableType::Scalar => {
                 let cell_val = CellArgument::Value(spreadsheet.get(var.to_string()));
