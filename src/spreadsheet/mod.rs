@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use dashmap::DashMap;
 use once_cell::sync::Lazy;
 use regex::Regex;
@@ -20,11 +22,11 @@ impl Spreadsheet {
         }
     }
 
-    pub fn set(&mut self, key: String, value: CellValue) {
+    pub fn set(&self, key: String, value: CellValue) {
         self.cells.insert(key, value);
     }
 
-    pub fn get(&mut self, key: String) -> CellValue {
+    pub fn get(&self, key: String) -> CellValue {
         match self.cells.get(&key) {
             Some(cell) => cell.clone(),
             None => CellValue::None,
@@ -36,6 +38,10 @@ impl Default for Spreadsheet {
     fn default() -> Self {
         Self::new()
     }
+}
+
+pub fn new_shared_spreadsheet() -> Arc<Spreadsheet> {
+    Arc::new(Spreadsheet::new())
 }
 
 pub fn is_valid_cell(cell_name: &str) -> bool {

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use rsheet_lib::{
     cells::{column_name_to_number, column_number_to_name},
@@ -12,7 +12,7 @@ use crate::{
 };
 
 /// Gets the value of a cell in the spreadsheet.
-pub fn get(spreadsheet: &mut Spreadsheet, args: Vec<&str>) -> Result<(String, CellValue), Reply> {
+pub fn get(spreadsheet: &Arc<Spreadsheet>, args: Vec<&str>) -> Result<(String, CellValue), Reply> {
     // Check that number of arguments is correct
     if args.len() < 2 {
         return Err(Reply::Error(
@@ -31,7 +31,7 @@ pub fn get(spreadsheet: &mut Spreadsheet, args: Vec<&str>) -> Result<(String, Ce
 }
 
 /// Sets the value of a cell in the spreadsheet.
-pub fn set(spreadsheet: &mut Spreadsheet, args: Vec<&str>) -> Result<(), Reply> {
+pub fn set(spreadsheet: &Arc<Spreadsheet>, args: Vec<&str>) -> Result<(), Reply> {
     if args.len() < 3 {
         return Err(Reply::Error(
             "Invalid number of arguments supplied for set".to_string(),
