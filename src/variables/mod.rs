@@ -3,7 +3,7 @@ type EndCol<'a> = &'a str;
 type StartRow<'a> = &'a str;
 type EndRow<'a> = &'a str;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum VariableType<'a> {
     /// Basic variables will have only one cell.
     /// Example: A1
@@ -49,4 +49,32 @@ fn get_row_col(cell: &str) -> (&str, &str) {
             .expect("Invalid cells should not make it to this stage."),
     );
     (col, row)
+}
+
+#[cfg(test)]
+
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_categorize_variable() {
+        let scalar = "A1";
+        let horizontal_vector = "A1_C1";
+        let vertical_vector = "A1_A3";
+        let matrix = "A1_C3";
+
+        assert_eq!(categorize_variable(scalar), VariableType::Scalar);
+        assert_eq!(
+            categorize_variable(horizontal_vector),
+            VariableType::HorizontalVector("1", "A", "C")
+        );
+        assert_eq!(
+            categorize_variable(vertical_vector),
+            VariableType::VerticalVector("A", "1", "3")
+        );
+        assert_eq!(
+            categorize_variable(matrix),
+            VariableType::Matrix(("A", "1"), ("C", "3"))
+        );
+    }
 }
