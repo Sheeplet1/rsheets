@@ -49,9 +49,8 @@ pub fn set(spreadsheet: &Arc<Spreadsheet>, args: Vec<&str>) -> Result<(), Reply>
     let runner = CommandRunner::new(&expr);
 
     let mut var_map: HashMap<String, CellArgument> = HashMap::new();
-    let var_vec = runner.find_variables();
 
-    for var in var_vec {
+    for var in runner.find_variables() {
         let var_type: VariableType = categorize_variable(&var);
 
         match var_type {
@@ -63,6 +62,7 @@ pub fn set(spreadsheet: &Arc<Spreadsheet>, args: Vec<&str>) -> Result<(), Reply>
                 let start_row: u32 = start_row.parse().unwrap();
                 let end_row: u32 = end_row.parse().unwrap();
 
+                // Fill out vertical cell vector.
                 let mut cell_vec = Vec::new();
 
                 for row in start_row..=end_row {
@@ -79,6 +79,7 @@ pub fn set(spreadsheet: &Arc<Spreadsheet>, args: Vec<&str>) -> Result<(), Reply>
                 let start_col = column_name_to_number(start_col);
                 let end_col = column_name_to_number(end_col);
 
+                // Fill out horizontal cell vector.
                 let mut cell_vec = Vec::new();
 
                 for col in start_col..=end_col {
@@ -99,6 +100,7 @@ pub fn set(spreadsheet: &Arc<Spreadsheet>, args: Vec<&str>) -> Result<(), Reply>
                 let start_col = column_name_to_number(start_col);
                 let end_col = column_name_to_number(end_col);
 
+                // Fill out the matrix.
                 let mut cell_matrix = Vec::new();
 
                 for row in start_row..=end_row {
