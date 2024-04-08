@@ -8,7 +8,6 @@ use rsheet_lib::command_runner::CellValue;
 
 /// Lazy static pattern for cell names. Using Lazy to avoid multiple
 /// regex compilations, which could end up expensive.
-static CELL_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r"^[A-Z]+[0-9]+$").unwrap());
 
 pub struct Spreadsheet {
     // Dashmap is used for concurrent access to cells.
@@ -45,5 +44,6 @@ pub fn new_shared_spreadsheet() -> Arc<Spreadsheet> {
 }
 
 pub fn is_valid_cell(cell_name: &str) -> bool {
+    static CELL_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r"^[A-Z]+[0-9]+$").unwrap());
     CELL_PATTERN.is_match(cell_name)
 }
