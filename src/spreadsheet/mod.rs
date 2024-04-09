@@ -46,16 +46,6 @@ impl Spreadsheet {
                 .insert(key.to_string(), vec![dependency]);
         }
     }
-
-    /// When the value of a cell changes, we need to update all cells that
-    /// depend on it.
-    pub fn update_dependencies(self, key: &str, value: CellValue) {
-        if let Some(deps) = self.dependency_list.get(key) {
-            for dep in deps.value() {
-                // We need to re-run the expression for the dependent cells.
-            }
-        }
-    }
 }
 
 impl Default for Spreadsheet {

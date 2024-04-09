@@ -31,17 +31,13 @@ pub fn set(spreadsheet: &Arc<Spreadsheet>, args: Vec<&str>) -> Result<(), Reply>
     let vars = runner.find_variables();
     let var_map = fill_variable_map(spreadsheet, &vars);
 
-    if vars.is_empty() {
-        let cell_val = runner.run(&var_map);
-        spreadsheet.set_cell(cell, cell_val.clone(), None);
-        // TODO: Update dependencies here and check for circular dependencies.
-        // spreadsheet.update_dependencies(cell, cell_val);
-        return Ok(());
-    }
-
     let cell_val = runner.run(&var_map);
-    spreadsheet.set_cell(cell, cell_val, Some(expr));
+    match vars.is_empty() {
+        true => spreadsheet.set_cell(cell, cell_val, None),
+        false => spreadsheet.set_cell(cell, cell_val, Some(expr)),
+    }
     // TODO: Update dependencies here and check for circular dependencies.
+
     Ok(())
 }
 
