@@ -28,8 +28,7 @@ the dependency list in a graphical or adjacency list approach.
 
 Therefore, we'll need:
 
-1. Need to alter our spreadsheet to be type `DashMap<String, String>` where
-   the value is the entire expression, such as `A1 * 2`.
+1. Need to add capabilities for CellValue::String to hold expressions.
 2. Create a parsing helper to extract the cell name, and then the cell value
    recursively.
 
@@ -43,3 +42,20 @@ Therefore, we'll need:
 
 - If `set` creates a dependency, then need to add.
 - If `set` removes a dependency, need to remove from the list.
+
+===============================================================================
+
+Currently, have `set` storing expressions in `CellValue::String` and then `get`
+will recursively calculate that value at run-time/call which means Task 6
+may require refactoring in the future.
+
+If we are storing expressions as CellValue::String, then we also need to parse
+basic commands such as `sum(A1_C1)` in the case of matrixes. Therefore, when
+we do `get` we will also need to evaluate these expressions at run-time?
+
+Decided to go against calculating values at run-time when `get` is called as
+this doesn't solve the problem of circular dependencies.
+
+So I will be calculating the value when `set` is called.
+
+I might need to change the whole `set` function and mindmap the logic out.
