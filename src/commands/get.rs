@@ -19,7 +19,7 @@ pub fn get(spreadsheet: &Arc<Spreadsheet>, args: Vec<&str>) -> Result<(String, C
         return Err(Reply::Error("Invalid cell provided.".to_string()));
     }
 
-    let (cell_val, _) = spreadsheet.get_cell(cell);
+    let cell_val = spreadsheet.get_cell_val(cell);
 
     Ok((cell.to_string(), cell_val))
 }

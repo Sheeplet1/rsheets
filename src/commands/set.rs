@@ -1,8 +1,11 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
 use rsheet_lib::{
     cells::{column_name_to_number, column_number_to_name},
-    command_runner::{CellArgument, CellValue, CommandRunner},
+    command_runner::{CellArgument, CommandRunner},
     replies::Reply,
 };
 
@@ -31,12 +34,74 @@ pub fn set(spreadsheet: &Arc<Spreadsheet>, args: Vec<&str>) -> Result<(), Reply>
     let vars = runner.find_variables();
     let var_map = fill_variable_map(spreadsheet, &vars);
 
+    // TODO: This is a bit of a hacky way to handle dependencies. We should
+    // realistically compare variables and only remove the ones that are no
+    // longer considered.
+
+    // When we set the cell again, we destroy all parent-child links and then
+    // reconstruct them. This is done by getting the old expression and removing
+    // all links associated with the old variables.
+    let old_expr = spreadsheet.get_cell_expr(cell);
+    if let Some(old_expr) = old_expr {
+        if old_expr != expr {
+            let old_vars = CommandRunner::new(&old_expr).find_variables();
+            old_vars.into_iter().for_each(|var| {
+                // This isn't actually comparing the old variables and the
+                // new variables, its just removing all variables from the old
+                // expression.
+                spreadsheet.remove_dependency(&var, cell);
+            });
+        }
+    }
+
+    // Add the current cell as a child to the cells in its expression.
+    vars.clone().into_iter().for_each(|var| {
+        spreadsheet.add_dependency(&var, cell);
+    });
+
     let cell_val = runner.run(&var_map);
     match vars.is_empty() {
         true => spreadsheet.set_cell(cell, cell_val, None),
         false => spreadsheet.set_cell(cell, cell_val, Some(expr)),
     }
-    // TODO: Update dependencies here and check for circular dependencies.
+
+    update_children(spreadsheet, cell, &mut HashSet::new())?;
+    Ok(())
+}
+
+pub fn update_children(
+    spreadsheet: &Arc<Spreadsheet>,
+    parent: &str,
+    visited: &mut HashSet<String>,
+) -> Result<(), Reply> {
+    // Checking for circular dependencies here.
+    if visited.contains(parent) {
+        return Err(Reply::Error(format!(
+            "Circular dependency detected: Cell {} is self-referential",
+            parent
+        )));
+    }
+    visited.insert(parent.to_string());
+
+    let children = spreadsheet.get_children(parent).unwrap_or_default();
+
+    // Update that children and then update their children recursively.
+    for child in children {
+        let child_expr = spreadsheet.get_cell_expr(&child).unwrap();
+        let runner = CommandRunner::new(&child_expr);
+        let vars = runner.find_variables();
+        let var_map = fill_variable_map(spreadsheet, &vars);
+
+        let cell_val = runner.run(&var_map);
+        match vars.is_empty() {
+            true => spreadsheet.set_cell(&child, cell_val, None),
+            false => spreadsheet.set_cell(&child, cell_val, Some(child_expr)),
+        }
+
+        // A child could have their own children as well, so we need to update
+        // them too.
+        update_children(spreadsheet, &child, visited)?;
+    }
 
     Ok(())
 }
@@ -54,7 +119,7 @@ fn fill_variable_map(
 
         match var_type {
             VariableType::Scalar => {
-                let (cell_val, _) = spreadsheet.get_cell(&var);
+                let cell_val = spreadsheet.get_cell_val(&var);
                 var_map.insert(var, CellArgument::Value(cell_val));
             }
             VariableType::VerticalVector(start_col, start_row, end_row) => {
@@ -66,7 +131,7 @@ fn fill_variable_map(
 
                 for row in start_row..=end_row {
                     let cell = format!("{}{}", start_col, row).to_string();
-                    let (cell_val, _) = spreadsheet.get_cell(&cell);
+                    let cell_val = spreadsheet.get_cell_val(&cell);
 
                     cell_vec.push(cell_val);
                 }
@@ -85,7 +150,7 @@ fn fill_variable_map(
                     let col = column_number_to_name(col);
 
                     let cell = format!("{}{}", col, start_row).to_string();
-                    let (cell_val, _) = spreadsheet.get_cell(&cell);
+                    let cell_val = spreadsheet.get_cell_val(&cell);
 
                     cell_vec.push(cell_val)
                 }
@@ -108,7 +173,7 @@ fn fill_variable_map(
                         let col = column_number_to_name(col);
 
                         let cell = format!("{}{}", col, row).to_string();
-                        let (cell_val, _) = spreadsheet.get_cell(&cell);
+                        let cell_val = spreadsheet.get_cell_val(&cell);
 
                         row_vec.push(cell_val);
                     }

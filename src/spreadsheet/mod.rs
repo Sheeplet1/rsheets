@@ -13,14 +13,16 @@ pub struct Spreadsheet {
     cells: DashMap<String, (CellValue, Option<String>)>,
     /// Dependency list is used to keep track of which cells are dependent on
     /// which other cells. The values are dependent on the key cell.
-    dependency_list: DashMap<String, Vec<String>>,
+    pub parent_of: DashMap<String, Vec<String>>,
+    pub child_of: DashMap<String, Vec<String>>,
 }
 
 impl Spreadsheet {
     pub fn new() -> Self {
         Self {
             cells: DashMap::new(),
-            dependency_list: DashMap::new(),
+            parent_of: DashMap::new(),
+            child_of: DashMap::new(),
         }
     }
 
@@ -28,22 +30,56 @@ impl Spreadsheet {
         self.cells.insert(key.to_string(), (value, expr));
     }
 
-    pub fn get_cell(&self, key: &str) -> (CellValue, Option<String>) {
+    pub fn get_cell_val(&self, key: &str) -> CellValue {
         match self.cells.get(key) {
-            Some(cell) => cell.value().clone(),
-            None => (CellValue::None, None),
+            Some(cell) => cell.0.clone(),
+            None => CellValue::None,
         }
+    }
+
+    pub fn get_cell_expr(&self, key: &str) -> Option<String> {
+        match self.cells.get(key) {
+            Some(cell) => cell.value().1.clone(),
+            None => None,
+        }
+    }
+
+    pub fn get_children(&self, parent: &str) -> Option<Vec<String>> {
+        println!("Getting children of parent: {}", parent);
+        self.parent_of.get(parent).map(|deps| deps.value().clone())
     }
 
     /// Adds a dependency to the key's dependency list. I.e, the value is
     /// dependent on the key, so if the key changes, we need to update the value.
-    pub fn add_dependency(self, key: &str, dependency: &str) {
-        let dependency = dependency.to_string();
-        if let Some(mut deps) = self.dependency_list.get_mut(key) {
-            deps.push(dependency);
+    pub fn add_dependency(&self, parent: &str, child: &str) {
+        if !self.parent_of.contains_key(parent) {
+            self.parent_of
+                .insert(parent.to_string(), vec![child.to_string()]);
         } else {
-            self.dependency_list
-                .insert(key.to_string(), vec![dependency]);
+            self.parent_of
+                .get_mut(parent)
+                .unwrap()
+                .push(child.to_string());
+        }
+
+        if !self.child_of.contains_key(child) {
+            self.child_of
+                .insert(child.to_string(), vec![parent.to_string()]);
+        } else {
+            self.child_of
+                .get_mut(child)
+                .unwrap()
+                .push(parent.to_string());
+        }
+    }
+
+    pub fn remove_dependency(&self, parent: &str, child: &str) {
+        if let Some(mut parent_deps) = self.parent_of.get_mut(parent) {
+            parent_deps.retain(|dep| dep != child);
+        }
+
+        if let Some(mut child_deps) = self.child_of.get_mut(child) {
+            child_deps.retain(|dep| dep != parent);
         }
     }
 }
