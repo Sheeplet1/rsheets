@@ -57,8 +57,14 @@ where
 
                             writer.write_message(Reply::Value(cell, cell_val)).unwrap();
                         }
-                        Err(e) => {
-                            writer.write_message(e).unwrap();
+                        Err((cell, e)) => {
+                            if !cell.is_empty() {
+                                let res = format!("{:?}: {:?}", cell, e);
+
+                                writer.write_message(Reply::Error(res)).unwrap();
+                            } else {
+                                writer.write_message(e).unwrap();
+                            }
                         }
                     },
                     "set" => match commands::set::set(&spreadsheet, args) {

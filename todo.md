@@ -1,78 +1,164 @@
-# Task 4
+Test test_02_05_simple_calculations (simple_calculations #05) - failed (Incorrect output)
+Your program produced this line of output:
+Error (hidden by mark mode)
 
-Dependency changes - `set B1 A1 * 2`
+The correct 1 lines of output for this test were:
+A1 = Error (hidden by mark mode)
 
-If A1 is changed to 3, then B1 must be set to 6.
+The difference between your output(-) and the correct output(+) is:
 
-We have two options:
+- Error (hidden by mark mode)
 
-1. We can re-evaluate the value for that cell whenever it is called with `get`.
-2. Or if we create a dependency list for each cell, whenever that cell is changed,
-   then we update each cell that is dependent on that cell.
+* A1 = Error (hidden by mark mode)
+  ? +++++
 
-So what do we need to do here?
+The input for this test was:
+set A1 asdf-not-a-command
+get A1
+Note: last character in above input is not '\n'
 
-1. Currently, our spreadsheet is of type `DashMap<String, CellValue>`. We need
-   to figure out if we need to change the value of the `DashMap` to `String` to hold
-   expressions such as `A1 * 2`, and then whenever we get that cell, we have to
-   evaluate that expression recursively.
+You can reproduce this test by executing these commands:
+6991 cargo build --target-dir target # crate.tar
+echo -n -e 'set A1 asdf-not-a-command\nget A1' | ./target/debug/rsheet --mark-mode
+Test test_02_06_simple_calculations (simple_calculations #06) - failed (Incorrect output)
+Your program produced these 2 lines of output:
+Error (hidden by mark mode)
+A7 = "test"
 
-I am pretty sure that is the only change required, could be wrong. It just means
-we need to make some parsing and evaluation helper function to assist with
-these expressions.
+The correct 2 lines of output for this test were:
+A6 = Error (hidden by mark mode)
+A7 = "test"
 
-===============================================================================
+The difference between your output(-) and the correct output(+) is:
 
-Looking at future Task 5 and Task 6, it seems they are pushing me to implement
-the dependency list in a graphical or adjacency list approach.
+- Error (hidden by mark mode)
 
-Therefore, we'll need:
+* A6 = Error (hidden by mark mode)
+  ? +++++
 
-1. Need to add capabilities for CellValue::String to hold expressions.
-2. Create a parsing helper to extract the cell name, and then the cell value
-   recursively.
+...
 
-- Differentiate between CELL and VALUE. We can just check by seeing if that
-  character has ASCII digits.
-- If the CELL has no `_`, then it is a scalar type, just get that value.
-- If the CELL has `_`, then get its type (Horizontal, Vertical, Matrix), then
-  get its value.
+The input for this test was:
+set A7 "test"
+set A6 silly-error
+get A6
+get A7
+Note: last character in above input is not '\n'
 
-3. A new module for managing and updating dependencies.
+You can reproduce this test by executing these commands:
+6991 cargo build --target-dir target # crate.tar
+echo -n -e 'set A7 "test"\nset A6 silly-error\nget A6\nget A7' | ./target/debug/rsheet --mark-mode
 
-- If `set` creates a dependency, then need to add.
-- If `set` removes a dependency, need to remove from the list.
+Test test_03_06_simple_references (simple_references #06) - failed (Incorrect output)
+Your program produced these 2 lines of output:
+Error (hidden by mark mode)
+A2 = "'this' can only be used in functions (line 1, position 7)"
 
-===============================================================================
+The correct 2 lines of output for this test were:
+A1 = Error (hidden by mark mode)
+Error (hidden by mark mode)
 
-Currently, have `set` storing expressions in `CellValue::String` and then `get`
-will recursively calculate that value at run-time/call which means Task 6
-may require refactoring in the future.
+The difference between your output(-) and the correct output(+) is:
 
-If we are storing expressions as CellValue::String, then we also need to parse
-basic commands such as `sum(A1_C1)` in the case of matrixes. Therefore, when
-we do `get` we will also need to evaluate these expressions at run-time?
+- A1 = Error (hidden by mark mode)
+  Error (hidden by mark mode)
 
-Decided to go against calculating values at run-time when `get` is called as
-this doesn't solve the problem of circular dependencies.
+* A2 = "'this' can only be used in functions (line 1, position 7)"
 
-So I will be calculating the value when `set` is called.
+The input for this test was:
+set A1 error-this-isn't real code
+set A2 A1
+get A1
+get A2
+Note: last character in above input is not '\n'
 
-I might need to change the whole `set` function and mindmap the logic out.
+You can reproduce this test by executing these commands:
+6991 cargo build --target-dir target # crate.tar
+echo -n -e 'set A1 error-this-isn'"'"'t real code\nset A2 A1\nget A1\nget A2' | ./target/debug/rsheet --mark-mode
 
-===============================================================================
+Test test_08_05_multi-layered_deps (multi-layered_deps #05) - failed (Incorrect output)
+Your program produced these 4 lines of output:
+A3 = 11
+C3 = 10
+C1 = 11
+D4 = 56
 
-Counter Case:
+The correct 4 lines of output for this test were:
+A3 = 11
+C3 = 10
+C1 = 11
+D4 = 32
 
-```
-set A1 1
-set B1 A1 * 2 => B = 2
-set A1 2
-```
+The difference between your output(-) and the correct output(+) is:
+...
+C1 = 11
 
-What should happen is that B = 4 right? But we do not have a method of storing
-expressions at the moment. Which means we need another structure to hold
-expressions for cells.
+- D4 = 56
 
-1. On each `set`, need to update the dependency list.
-2.
+* D4 = 32
+
+The input for this test was:
+a: set A1 5
+a: sleep 100
+a: set A2 A1 + 1
+a: set A3 A1 + A2
+b: set B1 A1 + 1
+b: set C1 B1 + A1
+c: set B2 A1
+c: set C3 2 \* B2
+d: sleep 250
+d: get A3
+d: get C3
+d: get C1
+d: set A1 9
+d: set D4 C3 + C1 + A3
+e: sleep 600
+e: get D4
+Note: last character in above input is not '\n'
+
+You can reproduce this test by executing these commands:
+6991 cargo build --target-dir target # crate.tar
+echo -n -e 'a: set A1 5\na: sleep 100\na: set A2 A1 + 1\na: set A3 A1 + A2\nb: set B1 A1 + 1\nb: set C1 B1 + A1\nc: set B2 A1\nc: set C3 2 \* B2\nd: sleep 250\nd: get A3\nd: get C3\nd: get C1\nd: set A1 9\nd: set D4 C3 + C1 + A3\ne: sleep 600\ne: get D4' | ./target/debug/rsheet --mark-mode
+Test test_09_01_circular_deps (circular_deps #01) - failed (Incorrect output)
+Your program produced this line of output:
+Error (hidden by mark mode)
+
+The correct 2 lines of output for this test were:
+Error (hidden by mark mode)
+Error (hidden by mark mode)
+
+The difference between your output(-) and the correct output(+) is:
+Error (hidden by mark mode)
+
+- Error (hidden by mark mode)
+
+The input for this test was:
+set A1 A2
+set A2 A1
+get A1
+get A2
+Note: last character in above input is not '\n'
+
+You can reproduce this test by executing these commands:
+6991 cargo build --target-dir target # crate.tar
+echo -n -e 'set A1 A2\nset A2 A1\nget A1\nget A2' | ./target/debug/rsheet --mark-mode
+
+Test test_09_04_circular_deps (circular_deps #04) - failed (errors)
+Your program's output was correct but errors occurred:
+thread '<unnamed>' panicked at src/commands/set.rs:155:60:
+called `Option::unwrap()` on a `None` value
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+thread 'main' panicked at /tmp/tmp1np7h3nr/autotest/src/lib.rs:29:24:
+called `Result::unwrap()` on an `Err` value: Any { .. }
+Apart from the above errors, your program's output was correct.
+
+The input for this test was:
+A: set A1 A2
+B: set A2 A1
+C: sleep 200
+C: get A1
+Note: last character in above input is not '\n'
+
+You can reproduce this test by executing these commands:
+6991 cargo build --target-dir target # crate.tar
+echo -n -e 'A: set A1 A2\nB: set A2 A1\nC: sleep 200\nC: get A1' | ./target/debug/rsheet --mark-mode

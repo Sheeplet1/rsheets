@@ -27,6 +27,9 @@ pub fn set(spreadsheet: &Arc<Spreadsheet>, args: Vec<&str>) -> Result<(), Reply>
         return Err(Reply::Error("Invalid cell provided.".to_string()));
     }
 
+    // Conditional check beforehand to confirm that strings contain quotation
+    // marks.
+
     // Merge the rest of the arguments into a single expression for CommandRunner
     let expr = args[2..].join(" ");
     let runner = CommandRunner::new(&expr);
@@ -55,7 +58,7 @@ pub fn set(spreadsheet: &Arc<Spreadsheet>, args: Vec<&str>) -> Result<(), Reply>
     }
 
     // Add the current cell as a child to the cells in its expression.
-
+    // TODO: Refactor to be cleaner
     vars.clone().into_iter().for_each(|var| {
         let var_type = categorize_variable(&var);
 
