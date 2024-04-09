@@ -2,6 +2,7 @@ mod commands;
 pub mod spreadsheet;
 pub mod utils;
 
+use rsheet_lib::command_runner::CellValue;
 use rsheet_lib::connect::{Manager, Reader, Writer};
 use rsheet_lib::replies::Reply;
 use spreadsheet::Spreadsheet;
@@ -14,18 +15,18 @@ where
     M: Manager,
 {
     let spreadsheet = spreadsheet::new_shared_spreadsheet();
+    let mut handlers = Vec::new();
 
-    loop {
-        match manager.accept_new_connection() {
-            Ok((mut recv, mut send)) => {
-                let spreadsheet = spreadsheet.clone();
-                let handler = thread::spawn(move || {
-                    handle_connection(spreadsheet, &mut recv, &mut send);
-                });
-                handler.join().unwrap();
-            }
-            Err(_) => return,
-        }
+    while let Ok((mut recv, mut send)) = manager.accept_new_connection() {
+        let spreadsheet = spreadsheet.clone();
+        let handler = thread::spawn(move || {
+            handle_connection(spreadsheet, &mut recv, &mut send);
+        });
+        handlers.push(handler);
+    }
+
+    for handler in handlers {
+        handler.join().unwrap();
     }
 }
 
@@ -47,6 +48,13 @@ where
                 match command {
                     "get" => match commands::get::get(&spreadsheet, args) {
                         Ok((cell, cell_val)) => {
+                            if let CellValue::Error(_) = cell_val {
+                                // This can occur when the cell is a part of
+                                // a circular dependency. In that case, we do
+                                // not return anything.
+                                continue;
+                            }
+
                             writer.write_message(Reply::Value(cell, cell_val)).unwrap();
                         }
                         Err(e) => {
