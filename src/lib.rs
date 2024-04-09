@@ -1,5 +1,4 @@
 mod commands;
-mod dependencies;
 pub mod spreadsheet;
 pub mod utils;
 
