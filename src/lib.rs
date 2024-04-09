@@ -1,6 +1,7 @@
 mod commands;
+mod dependencies;
 pub mod spreadsheet;
-mod variables;
+pub mod utils;
 
 use rsheet_lib::connect::{Manager, Reader, Writer};
 use rsheet_lib::replies::Reply;
@@ -49,7 +50,7 @@ where
 
                 let command = args[0];
                 match command {
-                    "get" => match commands::get(&spreadsheet, args) {
+                    "get" => match commands::get::get(&spreadsheet, args) {
                         Ok((cell, cell_val)) => {
                             writer.write_message(Reply::Value(cell, cell_val)).unwrap();
                         }
@@ -57,7 +58,7 @@ where
                             writer.write_message(e).unwrap();
                         }
                     },
-                    "set" => match commands::set(&spreadsheet, args) {
+                    "set" => match commands::set::set(&spreadsheet, args) {
                         Ok(_) => {}
                         Err(e) => {
                             writer.write_message(e).unwrap();

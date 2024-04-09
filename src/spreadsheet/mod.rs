@@ -1,8 +1,6 @@
 use std::sync::Arc;
 
 use dashmap::DashMap;
-use once_cell::sync::Lazy;
-use regex::Regex;
 
 use rsheet_lib::command_runner::CellValue;
 
@@ -41,9 +39,4 @@ impl Default for Spreadsheet {
 
 pub fn new_shared_spreadsheet() -> Arc<Spreadsheet> {
     Arc::new(Spreadsheet::new())
-}
-
-pub fn is_valid_cell(cell_name: &str) -> bool {
-    static CELL_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r"^[A-Z]+[0-9]+$").unwrap());
-    CELL_PATTERN.is_match(cell_name)
 }

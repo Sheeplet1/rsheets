@@ -22,3 +22,24 @@ we need to make some parsing and evaluation helper function to assist with
 these expressions.
 
 ===============================================================================
+
+Looking at future Task 5 and Task 6, it seems they are pushing me to implement
+the dependency list in a graphical or adjacency list approach.
+
+Therefore, we'll need:
+
+1. Need to alter our spreadsheet to be type `DashMap<String, String>` where
+   the value is the entire expression, such as `A1 * 2`.
+2. Create a parsing helper to extract the cell name, and then the cell value
+   recursively.
+
+- Differentiate between CELL and VALUE. We can just check by seeing if that
+  character has ASCII digits.
+- If the CELL has no `_`, then it is a scalar type, just get that value.
+- If the CELL has `_`, then get its type (Horizontal, Vertical, Matrix), then
+  get its value.
+
+3. A new module for managing and updating dependencies.
+
+- If `set` creates a dependency, then need to add.
+- If `set` removes a dependency, need to remove from the list.
