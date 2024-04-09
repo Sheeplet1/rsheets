@@ -5,7 +5,7 @@ use std::{
 
 use rsheet_lib::{
     cells::{column_name_to_number, column_number_to_name},
-    command_runner::{CellArgument, CommandRunner},
+    command_runner::{CellArgument, CellValue, CommandRunner},
     replies::Reply,
 };
 
@@ -55,8 +55,47 @@ pub fn set(spreadsheet: &Arc<Spreadsheet>, args: Vec<&str>) -> Result<(), Reply>
     }
 
     // Add the current cell as a child to the cells in its expression.
+
     vars.clone().into_iter().for_each(|var| {
-        spreadsheet.add_dependency(&var, cell);
+        let var_type = categorize_variable(&var);
+
+        match var_type {
+            VariableType::Scalar => spreadsheet.add_dependency(&var, cell),
+            VariableType::VerticalVector(start_col, start_row, end_row) => {
+                let start_row: u32 = start_row.parse().unwrap();
+                let end_row: u32 = end_row.parse().unwrap();
+
+                for row in start_row..=end_row {
+                    let parent = format!("{}{}", start_col, row).to_string();
+                    spreadsheet.add_dependency(&parent, cell);
+                }
+            }
+            VariableType::HorizontalVector(start_row, start_col, end_col) => {
+                let start_col = column_name_to_number(start_col);
+                let end_col = column_name_to_number(end_col);
+
+                for col in start_col..=end_col {
+                    let col = column_number_to_name(col);
+                    let parent = format!("{}{}", col, start_row).to_string();
+                    spreadsheet.add_dependency(&parent, cell);
+                }
+            }
+            VariableType::Matrix((start_col, start_row), (end_col, end_row)) => {
+                let start_row: u32 = start_row.parse().unwrap();
+                let end_row: u32 = end_row.parse().unwrap();
+
+                let start_col = column_name_to_number(start_col);
+                let end_col = column_name_to_number(end_col);
+
+                for row in start_row..=end_row {
+                    for col in start_col..=end_col {
+                        let col = column_number_to_name(col);
+                        let parent = format!("{}{}", col, row).to_string();
+                        spreadsheet.add_dependency(&parent, cell);
+                    }
+                }
+            }
+        }
     });
 
     let cell_val = runner.run(&var_map);
@@ -65,7 +104,7 @@ pub fn set(spreadsheet: &Arc<Spreadsheet>, args: Vec<&str>) -> Result<(), Reply>
         false => spreadsheet.set_cell(cell, cell_val, Some(expr)),
     }
 
-    update_children(spreadsheet, cell, &mut HashSet::new())?;
+    update_children(spreadsheet, cell, &mut HashSet::new(), &mut Vec::new())?;
     Ok(())
 }
 
@@ -73,15 +112,38 @@ pub fn update_children(
     spreadsheet: &Arc<Spreadsheet>,
     parent: &str,
     visited: &mut HashSet<String>,
+    path: &mut Vec<String>,
 ) -> Result<(), Reply> {
     // Checking for circular dependencies here.
-    if visited.contains(parent) {
+    if path.contains(&parent.to_string()) {
+        spreadsheet.set_cell(
+            parent,
+            CellValue::Error("Circular Dependency".to_string()),
+            None,
+        );
+
+        // update the cells that has this parent as a dependency to be error too
+        let children = spreadsheet.get_children(parent).unwrap_or_default();
+        for child in children {
+            spreadsheet.set_cell(
+                &child,
+                CellValue::Error("Circular Dependency".to_string()),
+                None,
+            );
+        }
+
         return Err(Reply::Error(format!(
             "Circular dependency detected: Cell {} is self-referential",
             parent
         )));
     }
+
+    if visited.contains(parent) {
+        return Ok(());
+    }
+
     visited.insert(parent.to_string());
+    path.push(parent.to_string());
 
     let children = spreadsheet.get_children(parent).unwrap_or_default();
 
@@ -100,8 +162,11 @@ pub fn update_children(
 
         // A child could have their own children as well, so we need to update
         // them too.
-        update_children(spreadsheet, &child, visited)?;
+        let mut new_path = path.clone();
+        update_children(spreadsheet, &child, visited, &mut new_path)?;
     }
+
+    path.pop();
 
     Ok(())
 }

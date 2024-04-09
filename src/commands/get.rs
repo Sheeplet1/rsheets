@@ -21,5 +21,10 @@ pub fn get(spreadsheet: &Arc<Spreadsheet>, args: Vec<&str>) -> Result<(String, C
 
     let cell_val = spreadsheet.get_cell_val(cell);
 
+    // This can only occur when its in a circular dependency.
+    if let CellValue::Error(s) = cell_val {
+        return Ok((cell.to_string(), CellValue::Error(s)));
+    }
+
     Ok((cell.to_string(), cell_val))
 }
