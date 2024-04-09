@@ -45,7 +45,6 @@ impl Spreadsheet {
     }
 
     pub fn get_children(&self, parent: &str) -> Option<Vec<String>> {
-        println!("Getting children of parent: {}", parent);
         self.parent_of.get(parent).map(|deps| deps.value().clone())
     }
 

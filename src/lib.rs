@@ -6,28 +6,25 @@ use rsheet_lib::connect::{Manager, Reader, Writer};
 use rsheet_lib::replies::Reply;
 use spreadsheet::Spreadsheet;
 
-use std::error::Error;
 use std::sync::Arc;
 use std::thread;
 
-// use log::info;
-
-pub fn start_server<M>(mut manager: M) -> Result<(), Box<dyn Error>>
+pub fn start_server<M>(mut manager: M)
 where
     M: Manager,
 {
     let spreadsheet = spreadsheet::new_shared_spreadsheet();
 
     loop {
-        if let Ok((mut recv, mut send)) = manager.accept_new_connection() {
-            log::info!("Accepted new connection");
-            let spreadsheet = spreadsheet.clone();
-            thread::spawn(move || {
-                handle_connection(spreadsheet, &mut recv, &mut send);
-            });
-        } else {
-            eprintln!("Failed to accept new connection");
-            continue;
+        match manager.accept_new_connection() {
+            Ok((mut recv, mut send)) => {
+                let spreadsheet = spreadsheet.clone();
+                let handler = thread::spawn(move || {
+                    handle_connection(spreadsheet, &mut recv, &mut send);
+                });
+                handler.join().unwrap();
+            }
+            Err(_) => return,
         }
     }
 }
@@ -39,7 +36,6 @@ where
 {
     loop {
         let msg = reader.read_message();
-        log::info!("Received message");
         match msg {
             Ok(msg) => {
                 let args: Vec<&str> = msg.split_whitespace().collect();
@@ -70,9 +66,8 @@ where
                     }
                 }
             }
-            Err(e) => {
-                eprintln!("Failed to read message: {}", e);
-                continue;
+            Err(_) => {
+                return;
             }
         }
     }
