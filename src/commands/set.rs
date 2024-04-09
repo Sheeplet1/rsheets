@@ -28,40 +28,38 @@ pub fn set(spreadsheet: &Arc<Spreadsheet>, args: Vec<&str>) -> Result<(), Reply>
     let expr = args[2..].join(" ");
     let runner = CommandRunner::new(&expr);
 
-    let mut var_map: HashMap<String, CellArgument> = HashMap::new();
     let vars = runner.find_variables();
+    let var_map = fill_variable_map(spreadsheet, &vars);
 
-    // TODO: When cell is set, we need to check if cell has a dependency list,
-    // if it does, we need to evaluate the cell and update the dependent cells.
-
-    // If there are variables found, then we store it as string in the hashmap,
-    // to be evaluated later since there is dependencies.
-    if !vars.is_empty() {
-        let expr = CellValue::String(expr);
-
-        // Reset dependency list on each set call. It is inefficient but it is
-        // the least complex way to handle this.
-        spreadsheet.clear_dependencies(cell.to_string());
-
-        // Get the other cells in the expression and store into the dependency
-        // list. Our cell is dependent on its variables in the expression.
-        for var in vars.iter() {
-            spreadsheet.add_dependency(var.to_string(), cell.to_string());
-        }
-
-        spreadsheet.set_cell(cell.to_string(), expr);
-        println!("spreadsheet: {:?}", spreadsheet);
+    if vars.is_empty() {
+        let cell_val = runner.run(&var_map);
+        spreadsheet.set_cell(cell, cell_val.clone(), None);
+        // TODO: Update dependencies here and check for circular dependencies.
+        // spreadsheet.update_dependencies(cell, cell_val);
         return Ok(());
     }
 
-    // Otherwise, its just a typical set operation, no dependencies.
-    for var in vars {
-        let var_type: VariableType = categorize_variable(&var);
+    let cell_val = runner.run(&var_map);
+    spreadsheet.set_cell(cell, cell_val, Some(expr));
+    // TODO: Update dependencies here and check for circular dependencies.
+    Ok(())
+}
+
+fn fill_variable_map(
+    spreadsheet: &Arc<Spreadsheet>,
+    variables: &Vec<String>,
+) -> HashMap<String, CellArgument> {
+    // We need to get the values of the variables in the expression and
+    // store them into the variables hashmap for the CommandRunner.
+    let mut var_map: HashMap<String, CellArgument> = HashMap::new();
+    for var in variables {
+        let var_type: VariableType = categorize_variable(var);
+        let var = var.to_string();
 
         match var_type {
             VariableType::Scalar => {
-                let cell_val = CellArgument::Value(spreadsheet.get_cell(var.to_string()));
-                var_map.insert(var, cell_val);
+                let (cell_val, _) = spreadsheet.get_cell(&var);
+                var_map.insert(var, CellArgument::Value(cell_val));
             }
             VariableType::VerticalVector(start_col, start_row, end_row) => {
                 let start_row: u32 = start_row.parse().unwrap();
@@ -72,7 +70,7 @@ pub fn set(spreadsheet: &Arc<Spreadsheet>, args: Vec<&str>) -> Result<(), Reply>
 
                 for row in start_row..=end_row {
                     let cell = format!("{}{}", start_col, row).to_string();
-                    let cell_val = spreadsheet.get_cell(cell);
+                    let (cell_val, _) = spreadsheet.get_cell(&cell);
 
                     cell_vec.push(cell_val);
                 }
@@ -91,7 +89,7 @@ pub fn set(spreadsheet: &Arc<Spreadsheet>, args: Vec<&str>) -> Result<(), Reply>
                     let col = column_number_to_name(col);
 
                     let cell = format!("{}{}", col, start_row).to_string();
-                    let cell_val = spreadsheet.get_cell(cell);
+                    let (cell_val, _) = spreadsheet.get_cell(&cell);
 
                     cell_vec.push(cell_val)
                 }
@@ -114,7 +112,7 @@ pub fn set(spreadsheet: &Arc<Spreadsheet>, args: Vec<&str>) -> Result<(), Reply>
                         let col = column_number_to_name(col);
 
                         let cell = format!("{}{}", col, row).to_string();
-                        let cell_val = spreadsheet.get_cell(cell);
+                        let (cell_val, _) = spreadsheet.get_cell(&cell);
 
                         row_vec.push(cell_val);
                     }
@@ -126,8 +124,5 @@ pub fn set(spreadsheet: &Arc<Spreadsheet>, args: Vec<&str>) -> Result<(), Reply>
             }
         }
     }
-
-    let cell_val = runner.run(&var_map);
-    spreadsheet.set_cell(cell.to_string(), cell_val);
-    Ok(())
+    var_map
 }

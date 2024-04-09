@@ -59,3 +59,20 @@ this doesn't solve the problem of circular dependencies.
 So I will be calculating the value when `set` is called.
 
 I might need to change the whole `set` function and mindmap the logic out.
+
+===============================================================================
+
+Counter Case:
+
+```
+set A1 1
+set B1 A1 * 2 => B = 2
+set A1 2
+```
+
+What should happen is that B = 4 right? But we do not have a method of storing
+expressions at the moment. Which means we need another structure to hold
+expressions for cells.
+
+1. On each `set`, need to update the dependency list.
+2.
