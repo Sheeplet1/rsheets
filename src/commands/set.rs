@@ -1,7 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-};
+use std::{collections::HashMap, sync::Arc};
 
 use rsheet_lib::{
     cells::{column_name_to_number, column_number_to_name},
@@ -44,18 +41,7 @@ pub fn set(spreadsheet: &Arc<Spreadsheet>, args: Vec<&str>) -> Result<(), Reply>
     // When we set the cell again, we destroy all parent-child links and then
     // reconstruct them. This is done by getting the old expression and removing
     // all links associated with the old variables.
-    let old_expr = spreadsheet.get_cell_expr(cell);
-    if let Some(old_expr) = old_expr {
-        if old_expr != expr {
-            let old_vars = CommandRunner::new(&old_expr).find_variables();
-            old_vars.into_iter().for_each(|var| {
-                // This isn't actually comparing the old variables and the
-                // new variables, its just removing all variables from the old
-                // expression.
-                spreadsheet.remove_dependency(&var, cell);
-            });
-        }
-    }
+    remove_all_dependencies(spreadsheet, cell, &expr);
 
     // If the cell is dependent on another cell that has an error, we set the
     // expression of the cell to be "Dependent" to signal this. Returns early.
@@ -122,24 +108,43 @@ pub fn set(spreadsheet: &Arc<Spreadsheet>, args: Vec<&str>) -> Result<(), Reply>
         false => spreadsheet.set_cell(cell, cell_val, Some(expr)),
     }
 
-    update_children(spreadsheet, cell, &mut HashSet::new(), &mut Vec::new())?;
+    update_children(spreadsheet, cell, &mut Vec::new())?;
     Ok(())
+}
+
+/// Removes all dependencies associated with the old expression for the cell.
+fn remove_all_dependencies(spreadsheet: &Arc<Spreadsheet>, cell: &str, expr: &String) {
+    let old_expr = spreadsheet.get_cell_expr(cell);
+
+    if let Some(old_expr) = old_expr {
+        if old_expr != *expr {
+            let old_vars = CommandRunner::new(&old_expr).find_variables();
+            old_vars.into_iter().for_each(|var| {
+                // This isn't actually comparing the old variables and the
+                // new variables, its just removing all variables from the old
+                // expression.
+                spreadsheet.remove_dependency(&var, cell);
+            });
+        }
+    }
 }
 
 pub fn update_children(
     spreadsheet: &Arc<Spreadsheet>,
     parent: &str,
-    visited: &mut HashSet<String>,
     path: &mut Vec<String>,
 ) -> Result<(), Reply> {
     // Checking for circular dependencies here.
+
+    const CIRCULAR_DEP: &str = "Circular Dependency";
+
     if path.contains(&parent.to_string()) {
         // TODO: Add a variable to replace the string "Circular Dependency"
         // for clarity.
         spreadsheet.set_cell(
             parent,
             CellValue::Error(format!("Cell {} is self-referential", parent)),
-            Some("Circular Dependency".to_string()),
+            Some(CIRCULAR_DEP.to_string()),
         );
 
         // update the cells that has this parent as a dependency to be error too
@@ -148,19 +153,13 @@ pub fn update_children(
             spreadsheet.set_cell(
                 &child,
                 CellValue::Error(format!("Cell {} is self-referential", child)),
-                Some("Circular Dependency".to_string()),
+                Some(CIRCULAR_DEP.to_string()),
             );
         }
 
         return Ok(());
     }
 
-    // TODO: Is visited really necessary now that we have a path stack?
-    if visited.contains(parent) {
-        return Ok(());
-    }
-
-    visited.insert(parent.to_string());
     path.push(parent.to_string());
 
     let children = spreadsheet.get_children(parent).unwrap_or_default();
@@ -181,7 +180,7 @@ pub fn update_children(
         // A child could have their own children as well, so we need to update
         // them too.
         let mut new_path = path.clone();
-        update_children(spreadsheet, &child, visited, &mut new_path)?;
+        update_children(spreadsheet, &child, &mut new_path)?;
     }
 
     path.pop();
