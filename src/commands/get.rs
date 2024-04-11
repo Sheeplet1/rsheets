@@ -27,19 +27,21 @@ pub fn get(
     }
 
     let cell_val = spreadsheet.get_cell_val(cell);
-
-    // This can only occur when its in a circular dependency.
-    if let CellValue::Error(s) = cell_val {
-        // Based on the autotests, if there is a circular dependency, we should
-        // not print any message other than the error. So, so we return an
-        // Ok variant with the error message.
-        if s == *"Circular Dependency".to_string() {
-            Ok((cell.to_string(), CellValue::Error(s)))
-        } else {
-            // Otherwise, we should print the error message.
-            Err((cell.to_string(), Reply::Error(s)))
+    let cell_expr = spreadsheet.get_cell_expr(cell);
+    // TODO: Need to clean this up. It is grossly written, even though it
+    // passes all the tests lol.
+    if let Some(s) = cell_expr {
+        if s == "Dependent" {
+            return Err((
+                cell.to_string(),
+                Reply::Error("A dependent cell contained an error".to_string()),
+            ));
+        } else if s == "Circular Dependency" {
+            if let CellValue::Error(s) = cell_val {
+                return Err((cell.to_string(), Reply::Error(s)));
+            }
         }
-    } else {
-        Ok((cell.to_string(), cell_val))
     }
+
+    Ok((cell.to_string(), cell_val))
 }

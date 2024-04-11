@@ -57,11 +57,24 @@ pub fn set(spreadsheet: &Arc<Spreadsheet>, args: Vec<&str>) -> Result<(), Reply>
         }
     }
 
+    // If the cell is dependent on another cell that has an error, we set the
+    // expression of the cell to be "Dependent" to signal this. Returns early.
+    for var in &vars {
+        // TODO: Combine this into the below code block
+        let var_val = spreadsheet.get_cell_val(var);
+        if let CellValue::Error(_) = var_val {
+            spreadsheet.set_cell(cell, var_val, Some("Dependent".to_string()));
+            return Ok(());
+        }
+    }
+
     // Add the current cell as a child to the cells in its expression.
-    // TODO: Refactor to be cleaner
     vars.clone().into_iter().for_each(|var| {
+        // Check if variable's value is an error - if so, we return Reply::Error.
+
         let var_type = categorize_variable(&var);
 
+        // TODO: Refactor to be cleaner
         match var_type {
             VariableType::Scalar => spreadsheet.add_dependency(&var, cell),
             VariableType::VerticalVector(start_col, start_row, end_row) => {
@@ -102,6 +115,8 @@ pub fn set(spreadsheet: &Arc<Spreadsheet>, args: Vec<&str>) -> Result<(), Reply>
     });
 
     let cell_val = runner.run(&var_map);
+    // println!("cell_val: {:?}", cell_val);
+
     match vars.is_empty() {
         true => spreadsheet.set_cell(cell, cell_val, None),
         false => spreadsheet.set_cell(cell, cell_val, Some(expr)),
@@ -119,10 +134,12 @@ pub fn update_children(
 ) -> Result<(), Reply> {
     // Checking for circular dependencies here.
     if path.contains(&parent.to_string()) {
+        // TODO: Add a variable to replace the string "Circular Dependency"
+        // for clarity.
         spreadsheet.set_cell(
             parent,
-            CellValue::Error("Circular Dependency".to_string()),
-            None,
+            CellValue::Error(format!("Cell {} is self-referential", parent)),
+            Some("Circular Dependency".to_string()),
         );
 
         // update the cells that has this parent as a dependency to be error too
@@ -130,17 +147,15 @@ pub fn update_children(
         for child in children {
             spreadsheet.set_cell(
                 &child,
-                CellValue::Error("Circular Dependency".to_string()),
-                None,
+                CellValue::Error(format!("Cell {} is self-referential", child)),
+                Some("Circular Dependency".to_string()),
             );
         }
 
-        return Err(Reply::Error(format!(
-            "Circular dependency detected: Cell {} is self-referential",
-            parent
-        )));
+        return Ok(());
     }
 
+    // TODO: Is visited really necessary now that we have a path stack?
     if visited.contains(parent) {
         return Ok(());
     }

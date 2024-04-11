@@ -2,7 +2,6 @@ mod commands;
 pub mod spreadsheet;
 pub mod utils;
 
-use rsheet_lib::command_runner::CellValue;
 use rsheet_lib::connect::{Manager, Reader, Writer};
 use rsheet_lib::replies::Reply;
 use spreadsheet::Spreadsheet;
@@ -48,21 +47,13 @@ where
                 match command {
                     "get" => match commands::get::get(&spreadsheet, args) {
                         Ok((cell, cell_val)) => {
-                            if let CellValue::Error(_) = cell_val {
-                                // This can occur when the cell is a part of
-                                // a circular dependency. In that case, we do
-                                // not return anything.
-                                continue;
-                            }
-
                             writer.write_message(Reply::Value(cell, cell_val)).unwrap();
                         }
-                        Err((cell, e)) => {
-                            if !cell.is_empty() {
-                                let res = format!("{:?}: {:?}", cell, e);
-
-                                writer.write_message(Reply::Error(res)).unwrap();
-                            } else {
+                        Err((_cell, e)) => {
+                            if let Reply::Error(ref s) = e {
+                                if s.is_empty() {
+                                    continue;
+                                }
                                 writer.write_message(e).unwrap();
                             }
                         }
@@ -70,6 +61,13 @@ where
                     "set" => match commands::set::set(&spreadsheet, args) {
                         Ok(_) => {}
                         Err(e) => {
+                            if let Reply::Error(ref s) = e {
+                                // TODO: Add reason for skipping empty error
+                                // messages.
+                                if s.is_empty() {
+                                    continue;
+                                }
+                            }
                             writer.write_message(e).unwrap();
                         }
                     },
