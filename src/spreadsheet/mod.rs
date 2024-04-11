@@ -4,32 +4,42 @@ use dashmap::DashMap;
 
 use rsheet_lib::command_runner::CellValue;
 
-/// Lazy static pattern for cell names. Using Lazy to avoid multiple
-/// regex compilations, which could end up expensive.
-
 #[derive(Debug)]
 pub struct Spreadsheet {
-    // Dashmap is used for concurrent access to cells.
+    /// Cells is the main data structure for the spreadsheet. It uses a
+    /// DashMap for concurrent access and modification. The key is the
+    /// cell name (e.g, A1, B1 ...) and the value is a tuple with the
+    /// cell's value and the expression.
     cells: DashMap<String, (CellValue, Option<String>)>,
-    /// Dependency list is used to keep track of which cells are dependent on
-    /// which other cells. The values are dependent on the key cell.
-    pub parent_of: DashMap<String, Vec<String>>,
-    pub child_of: DashMap<String, Vec<String>>,
+
+    /// dependencies: a map where the key cell has a vector of cells that
+    /// are dependent on it. If the key cell's value changes, then we need
+    /// to update all the cells' values in the vector.
+    ///
+    /// Example: dependencies[A1] = [B1, C1] means that B1 and C1 are
+    /// dependent on A1. If A1 changes, B1 and C1 need to be updated.
+    ///
+    /// Another way of expressing this relationship is the parent-child model.
+    /// A1 is the parent of B1 and C1. If the parent changes, the children
+    /// will also change.
+    pub dependencies: DashMap<String, Vec<String>>,
 }
 
 impl Spreadsheet {
     pub fn new() -> Self {
         Self {
             cells: DashMap::new(),
-            parent_of: DashMap::new(),
-            child_of: DashMap::new(),
+            dependencies: DashMap::new(),
         }
     }
 
+    /// Set's the cell's value and expression. If the cell already exists,
+    /// then the value and expression are overwritten.
     pub fn set_cell(&self, key: &str, value: CellValue, expr: Option<String>) {
         self.cells.insert(key.to_string(), (value, expr));
     }
 
+    /// Gets the cell's value from the `cells` map, as the value is a tuple.
     pub fn get_cell_val(&self, key: &str) -> CellValue {
         match self.cells.get(key) {
             Some(cell) => cell.0.clone(),
@@ -37,6 +47,7 @@ impl Spreadsheet {
         }
     }
 
+    /// Gets the cell's expression from the `cells` map, as the value is a tuple.
     pub fn get_cell_expr(&self, key: &str) -> Option<String> {
         match self.cells.get(key) {
             Some(cell) => cell.value().1.clone(),
@@ -44,41 +55,32 @@ impl Spreadsheet {
         }
     }
 
-    pub fn get_children(&self, parent: &str) -> Option<Vec<String>> {
-        self.parent_of.get(parent).map(|deps| deps.value().clone())
+    /// Get the parent's dependencies.
+    pub fn get_dependencies(&self, parent: &str) -> Option<Vec<String>> {
+        self.dependencies
+            .get(parent)
+            .map(|deps| deps.value().clone())
     }
 
     /// Adds a dependency to the key's dependency list. I.e, the value is
     /// dependent on the key, so if the key changes, we need to update the value.
     pub fn add_dependency(&self, parent: &str, child: &str) {
-        if !self.parent_of.contains_key(parent) {
-            self.parent_of
+        if !self.dependencies.contains_key(parent) {
+            self.dependencies
                 .insert(parent.to_string(), vec![child.to_string()]);
         } else {
-            self.parent_of
+            self.dependencies
                 .get_mut(parent)
                 .unwrap()
                 .push(child.to_string());
         }
-
-        if !self.child_of.contains_key(child) {
-            self.child_of
-                .insert(child.to_string(), vec![parent.to_string()]);
-        } else {
-            self.child_of
-                .get_mut(child)
-                .unwrap()
-                .push(parent.to_string());
-        }
     }
 
+    /// Removes a dependency from the parent's list. I.e, the value is no longer
+    /// influenced by the parent.
     pub fn remove_dependency(&self, parent: &str, child: &str) {
-        if let Some(mut parent_deps) = self.parent_of.get_mut(parent) {
+        if let Some(mut parent_deps) = self.dependencies.get_mut(parent) {
             parent_deps.retain(|dep| dep != child);
-        }
-
-        if let Some(mut child_deps) = self.child_of.get_mut(child) {
-            child_deps.retain(|dep| dep != parent);
         }
     }
 }

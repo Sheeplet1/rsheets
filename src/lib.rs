@@ -25,6 +25,7 @@ where
     }
 
     for handler in handlers {
+        // TODO: NO unwrap
         handler.join().unwrap();
     }
 }

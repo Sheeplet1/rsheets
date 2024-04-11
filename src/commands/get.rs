@@ -34,7 +34,7 @@ pub fn get(
         if s == "Dependent" {
             return Err((
                 cell.to_string(),
-                Reply::Error("A dependent cell contained an error".to_string()),
+                Reply::Error(format!("A dependent cell contained an error: {}", cell_val)),
             ));
         } else if s == "Circular Dependency" {
             if let CellValue::Error(s) = cell_val {
