@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 pub fn start_server<M>(mut manager: M)
 where
-    M: Manager,
+    M: Manager + Send + 'static,
 {
     let spreadsheet = spreadsheet::new_shared_spreadsheet();
     let pool = match rayon::ThreadPoolBuilder::new().num_threads(8).build() {
@@ -21,12 +21,14 @@ where
         }
     };
 
-    while let Ok((mut recv, mut send)) = manager.accept_new_connection() {
-        let spreadsheet = spreadsheet.clone();
-        pool.install(move || {
-            handle_connection(spreadsheet, &mut recv, &mut send);
-        })
-    }
+    pool.scope(|s| {
+        while let Ok((mut recv, mut send)) = manager.accept_new_connection() {
+            let spreadsheet = spreadsheet.clone();
+            s.spawn(move |_| {
+                handle_connection(spreadsheet, &mut recv, &mut send);
+            })
+        }
+    })
 }
 
 fn handle_connection<R, W>(spreadsheet: Arc<Spreadsheet>, reader: &mut R, writer: &mut W)
