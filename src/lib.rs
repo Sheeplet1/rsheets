@@ -7,26 +7,25 @@ use rsheet_lib::replies::Reply;
 use spreadsheet::Spreadsheet;
 
 use std::sync::Arc;
-use std::thread;
 
 pub fn start_server<M>(mut manager: M)
 where
     M: Manager,
 {
     let spreadsheet = spreadsheet::new_shared_spreadsheet();
-    let mut handlers = Vec::new();
+    let pool = match rayon::ThreadPoolBuilder::new().num_threads(8).build() {
+        Ok(pool) => pool,
+        Err(e) => {
+            println!("Error creating thread pool: {}", e);
+            return;
+        }
+    };
 
     while let Ok((mut recv, mut send)) = manager.accept_new_connection() {
         let spreadsheet = spreadsheet.clone();
-        let handler = thread::spawn(move || {
+        pool.install(move || {
             handle_connection(spreadsheet, &mut recv, &mut send);
-        });
-        handlers.push(handler);
-    }
-
-    for handler in handlers {
-        // TODO: NO unwrap
-        handler.join().unwrap();
+        })
     }
 }
 
