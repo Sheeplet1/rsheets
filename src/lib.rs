@@ -2,6 +2,7 @@ mod commands;
 pub mod spreadsheet;
 pub mod utils;
 
+use rayon::ThreadPoolBuilder;
 use rsheet_lib::connect::{Manager, Reader, Writer};
 use rsheet_lib::replies::Reply;
 use spreadsheet::Spreadsheet;
@@ -13,7 +14,7 @@ where
     M: Manager + Send + 'static,
 {
     let spreadsheet = spreadsheet::new_shared_spreadsheet();
-    let pool = match rayon::ThreadPoolBuilder::new().num_threads(8).build() {
+    let pool = match ThreadPoolBuilder::new().build() {
         Ok(pool) => pool,
         Err(e) => {
             println!("Error creating thread pool: {}", e);

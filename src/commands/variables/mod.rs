@@ -7,6 +7,8 @@ use rsheet_lib::{
 
 use crate::spreadsheet::Spreadsheet;
 
+/// Type aliases for the start and end columns and rows for a cell for
+/// easier understanding.
 type StartCol<'a> = &'a str;
 type EndCol<'a> = &'a str;
 type StartRow<'a> = &'a str;
@@ -31,6 +33,21 @@ pub enum VariableType<'a> {
     Matrix((StartCol<'a>, StartRow<'a>), (EndCol<'a>, EndRow<'a>)),
 }
 
+/// Categorizes the variable into a VariableType.
+///
+/// # Example
+///
+/// ```
+/// let scalar = "A1";
+/// let horizontal_vector = "A1_C1";
+/// let vertical_vector = "A1_A3";
+/// let matrix = "A1_C3";
+///
+/// assert_eq!(categorize_variable(scalar), VariableType::Scalar);
+/// assert_eq!(horizontal_vector), VariableType::HorizontalVector("1", "A", "C"));
+/// assert_eq!(vertical_vector), VariableType::VerticalVector("A", "1", "3"));
+/// assert_eq!(matrix), VariableType::Matrix(("A", "1"), ("C", "3")));
+/// ````
 pub fn categorize_variable(variable: &str) -> VariableType {
     let cells: Vec<&str> = variable.split('_').collect();
 
@@ -88,14 +105,35 @@ pub fn variable_map_for_runner(
     var_map
 }
 
+/// Splits the cell into its row and column.
+///
+/// # Example
+///
+/// ```
+/// let cell = "A1";
+/// let (col, row) = get_row_col(cell);
+/// assert_eq!(col, "A");
+/// assert_eq!(row, "1");
+/// ```
 fn get_row_col(cell: &str) -> (&str, &str) {
-    let (col, row) = cell.split_at(
-        cell.find(|c: char| c.is_ascii_digit())
-            .expect("Invalid cells should not make it to this stage."),
-    );
+    let (col, row) = cell
+        .split_at(cell.find(|c: char| c.is_ascii_digit()).expect(
+            "Invalid cells should not make it to this stage as they are checked in set.rs",
+        ));
     (col, row)
 }
 
+/// Creates a vector of cell values.
+///
+/// # Example
+///
+/// ```
+/// let (start_col, start_row) = get_row_col("A1");
+/// let (end_col, end_row) = get_row_col("A3");
+///
+/// let cell_vec = create_cell_vec(start_row, end_row, start_col, start_col, &spreadsheet);
+/// assert_eq!(cell_vec.len(), 3);
+/// ```
 fn create_cell_vec(
     start_row: &str,
     end_row: &str,
@@ -122,6 +160,19 @@ fn create_cell_vec(
     cell_vec
 }
 
+/// Creates a matrix of cell values.
+///
+/// # Example
+///
+/// ```
+/// let (start_col, start_row) = get_row_col("A1");
+/// let (end_col, end_row) = get_row_col("C3");
+///
+/// let cell_matrix = create_cell_matrix(start_row, end_row, start_col, end_col, &spreadsheet);
+///
+/// assert_eq!(cell_matrix.len(), 3);
+/// assert_eq!(cell_matrix[0].len(), 3);
+/// ```
 fn create_cell_matrix(
     start_row: &str,
     end_row: &str,
