@@ -65,7 +65,12 @@ Justify how your solution ensures you'll never have the problem described.
 
 ### Answer:
 
+I stored the timestamp for each message in lib.rs before parsing and executing 
+the command. Then, for each `set` command, I stored that timestamp in my `Cell` 
+struct as the last time it was set.
 
+Now, if the timestamp of a command is more recent than the last time the cell 
+was updated, then the command is executed. Otherwise, the command is ignored.
 
 ## Question 5:
 
