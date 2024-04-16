@@ -17,7 +17,7 @@ use crate::{
 use super::variables::{categorize_variable, VariableType};
 
 /// Sets the value of a cell in the spreadsheet.
-pub fn set(spreadsheet: &Arc<Spreadsheet>, args: Vec<&str>) -> Result<(), Reply> {
+pub fn set(spreadsheet: &Arc<Spreadsheet>, args: Vec<&str>, timestamp: usize) -> Result<(), Reply> {
     if args.len() < 3 {
         return Err(Reply::Error(
             "Invalid number of arguments supplied for set".to_string(),
@@ -39,7 +39,6 @@ pub fn set(spreadsheet: &Arc<Spreadsheet>, args: Vec<&str>) -> Result<(), Reply>
     // all links associated with the old variables.
     remove_all_dependencies(spreadsheet, cell, &expr);
 
-    const DEPENDENT: &str = "Dependent";
     let vars = runner.find_variables();
 
     for var in &vars {
@@ -48,7 +47,7 @@ pub fn set(spreadsheet: &Arc<Spreadsheet>, args: Vec<&str>) -> Result<(), Reply>
         // signal that the cell is dependent on an error cell.
         let var_val = spreadsheet.get_cell_val(var);
         if let CellValue::Error(_) = var_val {
-            spreadsheet.set_cell(cell, var_val, Some(DEPENDENT.to_string()));
+            spreadsheet.set_cell(cell, var_val, Some("Dependent".to_string()), timestamp);
             return Ok(());
         }
 
@@ -73,10 +72,10 @@ pub fn set(spreadsheet: &Arc<Spreadsheet>, args: Vec<&str>) -> Result<(), Reply>
     let cell_val = runner.run(&var_map);
 
     match vars.is_empty() {
-        true => spreadsheet.set_cell(cell, cell_val, None),
-        false => spreadsheet.set_cell(cell, cell_val, Some(expr)),
+        true => spreadsheet.set_cell(cell, cell_val, None, timestamp),
+        false => spreadsheet.set_cell(cell, cell_val, Some(expr), timestamp),
     }
 
-    update_dependencies(spreadsheet, cell, &mut Vec::new())?;
+    update_dependencies(spreadsheet, cell, &mut Vec::new(), timestamp)?;
     Ok(())
 }

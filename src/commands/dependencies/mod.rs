@@ -54,16 +54,17 @@ pub fn update_dependencies(
     spreadsheet: &Arc<Spreadsheet>,
     parent: &str,
     path: &mut Vec<String>,
+    timestamp: usize,
 ) -> Result<(), Reply> {
-    const CIRCULAR_DEP: &str = "Circular Dependency";
-
+    // TODO: Could refactor this into a separate function.
     if path.contains(&parent.to_string()) {
         // If the parent is in the path, then we have found a circular
         // dependency
         spreadsheet.set_cell(
             parent,
             CellValue::Error(format!("Cell {} is self-referential", parent)),
-            Some(CIRCULAR_DEP.to_string()),
+            Some("Circular Dependency".to_string()),
+            timestamp,
         );
 
         // Each dependency could have its own dependencies, so we need to also
@@ -75,7 +76,8 @@ pub fn update_dependencies(
             spreadsheet.set_cell(
                 &dep,
                 CellValue::Error(format!("Cell {} is self-referential", dep)),
-                Some(CIRCULAR_DEP.to_string()),
+                Some("Circular Dependency".to_string()),
+                timestamp,
             );
         }
 
@@ -103,17 +105,87 @@ pub fn update_dependencies(
 
         let cell_val = runner.run(&var_map);
         match vars.is_empty() {
-            true => spreadsheet.set_cell(&dep, cell_val, None),
-            false => spreadsheet.set_cell(&dep, cell_val, Some(expr)),
+            true => spreadsheet.set_cell(&dep, cell_val, None, timestamp),
+            false => spreadsheet.set_cell(&dep, cell_val, Some(expr), timestamp),
         }
 
         // Each dependency could have its own set of dependencies, so we need
         // to update those as well.
         let mut new_path = path.clone();
-        update_dependencies(spreadsheet, &dep, &mut new_path)?;
+        update_dependencies(spreadsheet, &dep, &mut new_path, timestamp)?;
     }
 
     path.pop();
 
     Ok(())
 }
+
+// /// Updates the dependencies of the cell, ensuring updates use the most recent data.
+// pub fn update_dependencies(
+//     spreadsheet: &Arc<Spreadsheet>,
+//     parent: &str,
+//     path: &mut Vec<String>,
+// ) -> Result<(), Reply> {
+//     // Early exit if circular dependency is detected.
+//     if path.contains(&parent.to_string()) {
+//         handle_circular_dependency(spreadsheet, parent);
+//         return Ok(());
+//     }
+//
+//     let parent_timestamp = spreadsheet.get_cell_timestamp(parent);
+//     path.push(parent.to_string());
+//
+//     let dependencies = spreadsheet.get_dependencies(parent).unwrap_or_default();
+//
+//     for dep in dependencies {
+//         let dep_timestamp = spreadsheet.get_cell_timestamp(&dep);
+//
+//         // Only proceed if the dependency's recorded timestamp matches the current version
+//         // This check ensures that we do not apply outdated updates.
+//         if dep_timestamp == parent_version {
+//             update_single_dependency(spreadsheet, &dep, parent_timestamp)?;
+//         }
+//     }
+//
+//     path.pop();
+//     Ok(())
+// }
+//
+// /// Handles updating a single dependency.
+// fn update_single_dependency(
+//     spreadsheet: &Arc<Spreadsheet>,
+//     dep: &str,
+//     parent_timestamp: usize,
+// ) -> Result<(), Reply> {
+//     let expr = spreadsheet.get_cell_expr(dep).unwrap_or_default();
+//     let runner = CommandRunner::new(&expr);
+//     let vars = runner.find_variables();
+//     let var_map = variable_map_for_runner(spreadsheet, &vars);
+//     let cell_val = runner.run(&var_map);
+//
+//     // Apply the update only if the timestamp matches, ensuring consistency.
+//     spreadsheet.set_cell(dep, cell_val, Some(expr), parent_timestamp + 1);
+//     Ok(())
+// }
+//
+// /// Handles a detected circular dependency.
+// fn handle_circular_dependency(spreadsheet: &Arc<Spreadsheet>, parent: &str) {
+//     let parent_timestamp = spreadsheet.get_cell_timestamp(parent);
+//     spreadsheet.set_cell(
+//         parent,
+//         CellValue::Error(format!("Cell {} is self-referential", parent)),
+//         Some("Circular Dependency".to_string()),
+//         parent_timestamp,
+//     );
+//
+//     let dependencies = spreadsheet.get_dependencies(parent).unwrap_or_default();
+//     for dep in dependencies {
+//         let dep_timestamp = spreadsheet.get_cell_timestamp(&dep);
+//         spreadsheet.set_cell(
+//             &dep,
+//             CellValue::Error(format!("Cell {} is involved in a circular dependency", dep)),
+//             Some("Circular Dependency".to_string()),
+//             dep_timestamp,
+//         );
+//     }
+// }

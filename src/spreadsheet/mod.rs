@@ -5,12 +5,29 @@ use dashmap::DashMap;
 use rsheet_lib::command_runner::CellValue;
 
 #[derive(Debug)]
+struct Cell {
+    value: CellValue,
+    expression: Option<String>,
+    timestamp: usize,
+}
+
+impl Default for Cell {
+    fn default() -> Self {
+        Self {
+            value: CellValue::None,
+            expression: None,
+            timestamp: 0,
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct Spreadsheet {
     /// Cells is the main data structure for the spreadsheet. It uses a
     /// DashMap for concurrent access and modification. The key is the
     /// cell name (e.g, A1, B1 ...) and the value is a tuple with the
     /// cell's value and the expression.
-    cells: DashMap<String, (CellValue, Option<String>)>,
+    cells: DashMap<String, Cell>,
 
     /// dependencies: a map where the key cell has a vector of cells that
     /// are dependent on it. If the key cell's value changes, then we need
@@ -33,10 +50,26 @@ impl Spreadsheet {
         }
     }
 
-    /// Set's the cell's value and expression. If the cell already exists,
-    /// then the value and expression are overwritten.
-    pub fn set_cell(&self, key: &str, value: CellValue, expr: Option<String>) {
-        self.cells.insert(key.to_string(), (value, expr));
+    /// Set the cell's value, expression and timestamp. If the incoming
+    /// timestamp is not more recent, then we don't update the cell.
+    pub fn set_cell(
+        &self,
+        key: &str,
+        value: CellValue,
+        expr: Option<String>,
+        inc_timestamp: usize,
+    ) {
+        // Get the cell entry, otherwise default to the default Cell struct.
+        let mut cell_entry = self.cells.entry(key.to_string()).or_default();
+
+        // If the incoming timestamp is more recent than the cell's timestamp,
+        // then we update the cell.
+        let curr_timestamp = cell_entry.timestamp;
+        if inc_timestamp >= curr_timestamp {
+            cell_entry.value = value;
+            cell_entry.expression = expr;
+            cell_entry.timestamp = inc_timestamp;
+        }
     }
 
     /// Gets the cell's value from the `cells` map, as the value is a tuple.
@@ -50,7 +83,7 @@ impl Spreadsheet {
     /// ```
     pub fn get_cell_val(&self, key: &str) -> CellValue {
         match self.cells.get(key) {
-            Some(cell) => cell.0.clone(),
+            Some(cell) => cell.value.clone(),
             None => CellValue::None,
         }
     }
@@ -66,8 +99,16 @@ impl Spreadsheet {
     /// ```
     pub fn get_cell_expr(&self, key: &str) -> Option<String> {
         match self.cells.get(key) {
-            Some(cell) => cell.value().1.clone(),
+            Some(cell) => cell.expression.clone(),
             None => None,
+        }
+    }
+
+    // TODO: We might not even need this function if we have checks beforehand.
+    pub fn get_cell_timestamp(&self, key: &str) -> usize {
+        match self.cells.get(key) {
+            Some(cell) => cell.timestamp,
+            None => 0,
         }
     }
 

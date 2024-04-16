@@ -8,6 +8,7 @@ use rsheet_lib::replies::Reply;
 use spreadsheet::Spreadsheet;
 
 use std::sync::Arc;
+use std::time;
 // use std::thread;
 
 pub fn start_server<M>(mut manager: M)
@@ -46,6 +47,14 @@ where
 {
     loop {
         let msg = reader.read_message();
+
+        // Append timestamp to the front of the message
+        let timestamp = time::SystemTime::now()
+            .duration_since(time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as usize;
+        // println!("msg & timestamp: {:?} {:?}", msg, timestamp);
+
         match msg {
             Ok(msg) => {
                 let args: Vec<&str> = msg.split_whitespace().collect();
@@ -65,8 +74,10 @@ where
                             writer.write_message(e).unwrap();
                         }
                     },
-                    "set" => match commands::set::set(spreadsheet, args) {
-                        Ok(_) => {}
+                    "set" => match commands::set::set(spreadsheet, args.clone(), timestamp) {
+                        Ok(_) => {
+                            // println!("args: {:?} and timestamp: {:?}", args.clone(), timestamp);
+                        }
                         Err(e) => {
                             writer.write_message(e).unwrap();
                         }
