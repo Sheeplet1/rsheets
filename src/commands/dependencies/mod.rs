@@ -50,7 +50,7 @@ pub fn remove_all_dependencies(spreadsheet: &Arc<Spreadsheet>, cell: &str, expr:
 }
 
 /// Updates the dependencies of the cell.
-pub fn update_dependencies(
+pub fn update_dependency(
     spreadsheet: &Arc<Spreadsheet>,
     parent: &str,
     path: &mut Vec<String>,
@@ -60,27 +60,7 @@ pub fn update_dependencies(
     if path.contains(&parent.to_string()) {
         // If the parent is in the path, then we have found a circular
         // dependency
-        spreadsheet.set_cell(
-            parent,
-            CellValue::Error(format!("Cell {} is self-referential", parent)),
-            Some("Circular Dependency".to_string()),
-            timestamp,
-        );
-
-        // Each dependency could have its own dependencies, so we need to also
-        // update them to contain the error message. `unwrap_or_default` is
-        // used here to handle the case where the parent cell has no
-        // dependencies.
-        let dependencies = spreadsheet.get_dependencies(parent).unwrap_or_default();
-        for dep in dependencies {
-            spreadsheet.set_cell(
-                &dep,
-                CellValue::Error(format!("Cell {} is self-referential", dep)),
-                Some("Circular Dependency".to_string()),
-                timestamp,
-            );
-        }
-
+        handle_circular_dependency(spreadsheet, parent);
         return Ok(());
     }
 
@@ -112,12 +92,37 @@ pub fn update_dependencies(
         // Each dependency could have its own set of dependencies, so we need
         // to update those as well.
         let mut new_path = path.clone();
-        update_dependencies(spreadsheet, &dep, &mut new_path, timestamp)?;
+        update_dependency(spreadsheet, &dep, &mut new_path, timestamp)?;
     }
 
     path.pop();
 
     Ok(())
+}
+
+fn handle_circular_dependency(spreadsheet: &Arc<Spreadsheet>, parent: &str) {
+    let parent_timestamp = spreadsheet.get_cell_timestamp(parent);
+    spreadsheet.set_cell(
+        parent,
+        CellValue::Error(format!("Cell {} is self-referential", parent)),
+        Some("Circular Dependency".to_string()),
+        parent_timestamp,
+    );
+
+    // Each dependency could have its own dependencies, so we need to also
+    // update them to contain the error message. `unwrap_or_default` is
+    // used here to handle the case where the parent cell has no
+    // dependencies.
+    let dependencies = spreadsheet.get_dependencies(parent).unwrap_or_default();
+    for dep in dependencies {
+        let dep_timestamp = spreadsheet.get_cell_timestamp(&dep);
+        spreadsheet.set_cell(
+            &dep,
+            CellValue::Error(format!("Cell {} is involved in a circular dependency", dep)),
+            Some("Circular Dependency".to_string()),
+            dep_timestamp,
+        );
+    }
 }
 
 // /// Updates the dependencies of the cell, ensuring updates use the most recent data.

@@ -7,7 +7,7 @@ use rsheet_lib::{
 
 use crate::{
     commands::{
-        dependencies::{add_as_dependent, remove_all_dependencies, update_dependencies},
+        dependencies::{add_as_dependent, remove_all_dependencies, update_dependency},
         variables::variable_map_for_runner,
     },
     spreadsheet::Spreadsheet,
@@ -76,6 +76,6 @@ pub fn set(spreadsheet: &Arc<Spreadsheet>, args: Vec<&str>, timestamp: usize) ->
         false => spreadsheet.set_cell(cell, cell_val, Some(expr), timestamp),
     }
 
-    update_dependencies(spreadsheet, cell, &mut Vec::new(), timestamp)?;
+    update_dependency(spreadsheet, cell, &mut Vec::new(), timestamp)?;
     Ok(())
 }
