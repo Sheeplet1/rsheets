@@ -40,6 +40,14 @@ impl Spreadsheet {
     }
 
     /// Gets the cell's value from the `cells` map, as the value is a tuple.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let spreadsheet = Spreadsheet::new();
+    /// spreadsheet.set_cell("A1", CellValue::Int(10.0), None);
+    /// assert_eq!(spreadsheet.get_cell_val("A1"), CellValue::Int(10.0));
+    /// ```
     pub fn get_cell_val(&self, key: &str) -> CellValue {
         match self.cells.get(key) {
             Some(cell) => cell.0.clone(),
@@ -48,6 +56,14 @@ impl Spreadsheet {
     }
 
     /// Gets the cell's expression from the `cells` map, as the value is a tuple.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let spreadsheet = Spreadsheet::new();
+    /// spreadsheet.set_cell("A1", CellValue::Int(10.0), Some("A2 + 10".to_string()));
+    /// assert_eq!(spreadsheet.get_cell_expr("A1"), Some("A2 + 10".to_string()));
+    /// ```
     pub fn get_cell_expr(&self, key: &str) -> Option<String> {
         match self.cells.get(key) {
             Some(cell) => cell.value().1.clone(),
@@ -56,6 +72,14 @@ impl Spreadsheet {
     }
 
     /// Get the parent's dependencies.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let spreadsheet = Spreadsheet::new();
+    /// spreadsheet.add_dependency("A1", "B1");
+    /// assert_eq!(spreadsheet.get_dependencies("A1"), Some(vec!["B1".to_string()]));
+    /// ```
     pub fn get_dependencies(&self, parent: &str) -> Option<Vec<String>> {
         self.dependencies
             .get(parent)
@@ -64,6 +88,14 @@ impl Spreadsheet {
 
     /// Adds a dependency to the key's dependency list. I.e, the value is
     /// dependent on the key, so if the key changes, we need to update the value.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let spreadsheet = Spreadsheet::new();
+    /// spreadsheet.add_dependency("A1", "B1");
+    /// assert_eq!(spreadsheet.get_dependencies("A1"), Some(vec!["B1".to_string()]));
+    /// ```
     pub fn add_dependency(&self, parent: &str, child: &str) {
         if !self.dependencies.contains_key(parent) {
             self.dependencies
@@ -78,6 +110,18 @@ impl Spreadsheet {
 
     /// Removes a dependency from the parent's list. I.e, the value is no longer
     /// influenced by the parent.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let spreadsheet = Spreadsheet::new();
+    ///
+    /// spreadsheet.add_dependency("A1", "B1");
+    /// assert_eq!(spreadsheet.get_dependencies("A1"), Some(vec!["B1".to_string()]));
+    ///
+    /// spreadsheet.remove_dependency("A1", "B1");
+    /// assert_eq!(spreadsheet.get_dependencies("A1"), None);
+    /// ```
     pub fn remove_dependency(&self, parent: &str, child: &str) {
         if let Some(mut parent_deps) = self.dependencies.get_mut(parent) {
             parent_deps.retain(|dep| dep != child);
@@ -91,6 +135,7 @@ impl Default for Spreadsheet {
     }
 }
 
+/// Creates an `Arc` instance of `Spreadsheet` for concurrency.
 pub fn new_shared_spreadsheet() -> Arc<Spreadsheet> {
     Arc::new(Spreadsheet::new())
 }
