@@ -28,8 +28,9 @@ pub fn get(
 
     let cell_val = spreadsheet.get_cell_val(cell);
     let cell_expr = spreadsheet.get_cell_expr(cell);
-    // TODO: Need to clean this up. It is grossly written, even though it
-    // passes all the tests lol.
+
+    // TODO: I dislike this logic and identifying an error type by string
+    // comparison. This should be refactored to use an enum or something else.
     if let Some(s) = cell_expr {
         if s == "Dependent" {
             return Err((

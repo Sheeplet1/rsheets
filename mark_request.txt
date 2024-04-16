@@ -7,11 +7,65 @@ to receive marks for the Design Questions.
 
 ## Question 1:
 
+How did you represent commands within your program? Identify an alternative 
+representation, and either justify your choice; or explain why that alternative
+representation would be better.
+
+### Answer:
+
+I represented commands as strings. An alternative representation would be to use 
+an enum to represent the commands. This would be better because it allows
+for typechecking and clarifies the code.
+
 ## Question 2:
+
+Point to where you handle Scalar, Vector and Matrix variables. How much 
+duplication of code did the Scalar, Vector and Matrix variables require? 
+Could you have improved this?
+
+### Answer:
+
+I handled Scalar, Vector and Matrix variables in the `Variable` class. 
+
+I believe that Scalar didn't require any duplication of code as it was only one
+value from the spreadsheet.
+
+Vector and Matrix required some "duplication" of code, where it appears 
+extremely similar but the resulting values were Vec<> and Vec<Vec<>>.
+
+If I was to combine the creation of the vectors for both Vector and Matrix, 
+I believe it would have made the code more complex and harder to read.
 
 ## Question 3:
 
+Point out the lines of code that include any concurrent data structures. 
+Contrast how your code would look if you were to make this assignment single-threaded.
+
+### Answer:
+
+There are multiple lines of code where concurrent data structures are used.
+
+The `Spreadsheet` class uses `DashMap` for the cells and the dependencies,
+which handles concurrency. It also has a function to create a wrapper 
+around the `Spreadsheet` struct with `Arc` to allow for multiple threads to
+access the spreadsheet.
+
+In `lib.rs`, threads are managed using `rayon` to allow for parallel processing
+of the commands. Specifically, we are using `rayon`'s `ThreadPool`.
+
+If this assignment were to be single-threaded, the `Spreadsheet` struct would
+not need to be wrapped in `Arc` and `rayon` would not be used.
+
+Commands would be processed sequentially as a result.
+
 ## Question 4:
+
+What line/lines of code show how you deal with the "complex edge case" in part 4. 
+Justify how your solution ensures you'll never have the problem described.
+
+### Answer:
+
+
 
 ## Question 5:
 

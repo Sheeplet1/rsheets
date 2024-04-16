@@ -41,7 +41,7 @@ pub fn set(spreadsheet: &Arc<Spreadsheet>, args: Vec<&str>) -> Result<(), Reply>
 
     const DEPENDENT: &str = "Dependent";
     let vars = runner.find_variables();
-    let var_map = variable_map_for_runner(spreadsheet, &vars);
+
     for var in &vars {
         // If the variable's value is an error, we set the cell's value to be
         // an error as well, but we set the expression to "Dependent" to
@@ -69,6 +69,7 @@ pub fn set(spreadsheet: &Arc<Spreadsheet>, args: Vec<&str>) -> Result<(), Reply>
         }
     }
 
+    let var_map = variable_map_for_runner(spreadsheet, &vars);
     let cell_val = runner.run(&var_map);
 
     match vars.is_empty() {

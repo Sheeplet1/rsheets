@@ -24,7 +24,7 @@ d: set D4 C3 + C1 + A3
 e: sleep 600
 e: get D4
 
-My issue is occurring at `d: set A1 9` which is not updating concurrently?
+My issue is occurring at `d: set A1 9` which is not uping concurrently?
 
 ### Answer
 
@@ -54,4 +54,6 @@ D4 = 48
 
 ## Test 2
 
-echo -n -e 'a: set A1 1\nb: set A2 sleep_then(100, A1 + 7)\nb: get A2\nc: sleep 200\nc: set A1 3\nc: sleep 200\nc: get A2' | ./target/debug/rsheet --mark-mode
+The test below is for the complex edge case of Task 4.
+
+echo -n 'snd1: set B1 A1 + 1\nsnd1: set A1 sleep_then(5000, 5)\nsnd2: sleep 1000\nsnd2: set A1 sleep_then(2000, 10)\nsnd2: get A1\nsnd2: get B1\nsnd1: sleep 2000\nsnd1: get A1\nsnd1: get B1' | ./target/debug/rsheet
