@@ -7,8 +7,9 @@ use rsheet_lib::connect::{Manager, Reader, Writer};
 use rsheet_lib::replies::Reply;
 use spreadsheet::Spreadsheet;
 
+use std::collections::VecDeque;
 use std::sync::Arc;
-use std::time;
+use std::{thread, time};
 // use std::thread;
 
 pub fn start_server<M>(mut manager: M)
@@ -16,6 +17,18 @@ where
     M: Manager + Send + 'static,
 {
     let spreadsheet = spreadsheet::new_shared_spreadsheet();
+    // let update_queue = VecDeque::new();
+    //
+    // let worker = thread::spawn({
+    //     let spreadsheet = spreadsheet.clone();
+    //     let update_queue = update_queue.clone();
+    //     move || {
+    //         while let Some(task) = update_queue.pop_front() {
+    //             // TODO: Update dependencies based on the command popped from
+    //             // the queue
+    //         }
+    //     }
+    // });
 
     // BUG: When letting Rayon manage the threads, the program context switches
     // and causes autotest failures. Increasing the number of threads does not
@@ -52,8 +65,7 @@ where
         let timestamp = time::SystemTime::now()
             .duration_since(time::UNIX_EPOCH)
             .unwrap()
-            .as_secs() as usize;
-        // println!("msg & timestamp: {:?} {:?}", msg, timestamp);
+            .as_secs();
 
         match msg {
             Ok(msg) => {
@@ -75,9 +87,7 @@ where
                         }
                     },
                     "set" => match commands::set::set(spreadsheet, args.clone(), timestamp) {
-                        Ok(_) => {
-                            // println!("args: {:?} and timestamp: {:?}", args.clone(), timestamp);
-                        }
+                        Ok(_) => {}
                         Err(e) => {
                             writer.write_message(e).unwrap();
                         }

@@ -17,7 +17,7 @@ use crate::{
 use super::variables::{categorize_variable, VariableType};
 
 /// Sets the value of a cell in the spreadsheet.
-pub fn set(spreadsheet: &Arc<Spreadsheet>, args: Vec<&str>, timestamp: usize) -> Result<(), Reply> {
+pub fn set(spreadsheet: &Arc<Spreadsheet>, args: Vec<&str>, timestamp: u64) -> Result<(), Reply> {
     if args.len() < 3 {
         return Err(Reply::Error(
             "Invalid number of arguments supplied for set".to_string(),

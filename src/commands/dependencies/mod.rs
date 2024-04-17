@@ -54,7 +54,7 @@ pub fn update_dependency(
     spreadsheet: &Arc<Spreadsheet>,
     parent: &str,
     path: &mut Vec<String>,
-    timestamp: usize,
+    timestamp: u64,
 ) -> Result<(), Reply> {
     if path.contains(&parent.to_string()) {
         // If the parent is in the path, then we have found a circular
@@ -101,7 +101,7 @@ pub fn update_dependency(
 
 /// Handles updating dependencies with the circular dependency error.
 ///
-fn handle_circular_dependency(spreadsheet: &Arc<Spreadsheet>, parent: &str, timestamp: usize) {
+fn handle_circular_dependency(spreadsheet: &Arc<Spreadsheet>, parent: &str, timestamp: u64) {
     spreadsheet.set_cell(
         parent,
         CellValue::Error(format!("Cell {} is self-referential", parent)),

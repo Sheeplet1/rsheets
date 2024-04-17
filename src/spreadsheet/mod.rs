@@ -8,7 +8,7 @@ use rsheet_lib::command_runner::CellValue;
 struct Cell {
     value: CellValue,
     expression: Option<String>,
-    timestamp: usize,
+    timestamp: u64,
 }
 
 impl Default for Cell {
@@ -52,13 +52,7 @@ impl Spreadsheet {
 
     /// Set the cell's value, expression and timestamp. If the incoming
     /// timestamp is not more recent, then we don't update the cell.
-    pub fn set_cell(
-        &self,
-        key: &str,
-        value: CellValue,
-        expr: Option<String>,
-        inc_timestamp: usize,
-    ) {
+    pub fn set_cell(&self, key: &str, value: CellValue, expr: Option<String>, inc_timestamp: u64) {
         // Get the cell entry, otherwise default to the default Cell struct.
         let mut cell_entry = self.cells.entry(key.to_string()).or_default();
 
@@ -105,7 +99,7 @@ impl Spreadsheet {
     }
 
     // TODO: We might not even need this function if we have checks beforehand.
-    pub fn get_cell_timestamp(&self, key: &str) -> usize {
+    pub fn get_cell_timestamp(&self, key: &str) -> u64 {
         match self.cells.get(key) {
             Some(cell) => cell.timestamp,
             None => 0,
