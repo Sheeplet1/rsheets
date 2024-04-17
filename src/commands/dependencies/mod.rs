@@ -8,14 +8,30 @@ use rsheet_lib::{
 
 use crate::{commands::variables::variable_map_for_runner, spreadsheet::Spreadsheet};
 
-/// Add the current cell as a dependency to all cells in the given range.
-pub fn add_as_dependent(
+/// Add the current cell as a dependency to all cells in the given range. Acts
+/// as a wrapper around `spreadsheet`'s `add_dependency` method for multiple
+/// cells.
+///
+/// # Example
+///
+/// ```rust
+/// use std::sync::Arc;
+/// use rsheet_lib::spreadsheet::Spreadsheet;
+/// use rsheet_server::commands::dependencies::add_as_dependent;
+///
+/// let spreadsheet = spreadsheet::new_shared_spreadsheet();
+/// add_dependencies(&spreadsheet, "A1", "A", "2", "A", "4");
+///
+/// let dependencies = spreadsheet.get_dependencies("A1").unwrap();
+/// assert_eq!(dependencies, vec!["A2".to_string(), "A3".to_string(), "A4".to_string()]);
+/// ```
+pub fn add_dependencies(
     spreadsheet: &Arc<Spreadsheet>,
     cell: &str,
-    start_row: &str,
     start_col: &str,
-    end_row: &str,
+    start_row: &str,
     end_col: &str,
+    end_row: &str,
 ) {
     let start_row: u32 = start_row.parse().unwrap();
     let end_row: u32 = end_row.parse().unwrap();
@@ -32,12 +48,29 @@ pub fn add_as_dependent(
     }
 }
 
-/// Removes all dependencies associated with the old expression for the cell.
-pub fn remove_all_dependencies(spreadsheet: &Arc<Spreadsheet>, cell: &str, expr: &String) {
+/// Removing all dependencies associated with the old expression. There are
+/// preliminary checks to ensure that the old expression is not the same as the
+/// new expression.
+///
+/// # Example
+///
+/// ```rust
+/// use std::sync::Arc;
+/// use rsheet_lib::spreadsheet::Spreadsheet;
+/// use rsheet_server::commands::dependencies::remove_all_dependencies;
+///
+/// let spreadsheet = spreadsheet::new_shared_spreadsheet();
+/// spreadsheet.set_cell("A1", CellValue::Int(10), Some("A2 + 10".to_string()));
+/// assert_eq!(spreadsheet.get_dependencies("A2"), Some(vec!["A1".to_string()]));
+///
+/// remove_all_dependencies(&spreadsheet, "A1", &"A2 + 10".to_string());
+/// assert_eq!(spreadsheet.get_dependencies("A2"), None);
+/// ```
+pub fn remove_all_dependencies(spreadsheet: &Arc<Spreadsheet>, cell: &str, new_expr: &String) {
     let old_expr = spreadsheet.get_cell_expr(cell);
 
     if let Some(old_expr) = old_expr {
-        if old_expr != *expr {
+        if old_expr != *new_expr {
             let old_vars = CommandRunner::new(&old_expr).find_variables();
             old_vars.into_iter().for_each(|var| {
                 // This isn't actually comparing the old variables and the
@@ -50,6 +83,26 @@ pub fn remove_all_dependencies(spreadsheet: &Arc<Spreadsheet>, cell: &str, expr:
 }
 
 /// Updates the dependencies of the cell.
+///
+/// # Example
+///
+/// ```rust
+/// use std::sync::Arc;
+/// use rsheet_lib::spreadsheet::Spreadsheet;
+/// use rsheet_server::commands::dependencies::update_dependency;
+/// use rsheet_lib::cells::CellValue;
+///
+/// let spreadsheet = spreadsheet::new_shared_spreadsheet();
+/// spreadsheet.set_cell("A1", CellValue::Int(10), None);
+/// spreadsheet.set_cell("A2", CellValue::Int(20), Some("A1 + 10".to_string()));
+/// spreadsheet.set_cell("A3", CellValue::Int(30), Some("A2 + 10".to_string()));
+///
+/// update_dependency(&spreadsheet, "A1", 0);
+///
+/// assert_eq!(spreadsheet.get_cell_val("A1"), CellValue::Int(0));
+/// assert_eq!(spreadsheet.get_cell_val("A2"), CellValue::Int(10));
+/// assert_eq!(spreadsheet.get_cell_val("A3"), CellValue::Int(20));
+/// ```
 pub fn update_dependency(
     spreadsheet: &Arc<Spreadsheet>,
     parent: &str,
@@ -58,31 +111,37 @@ pub fn update_dependency(
 ) -> Result<(), Reply> {
     if path.contains(&parent.to_string()) {
         // If the parent is in the path, then we have found a circular
-        // dependency
+        // dependency and we return early to avoid infinite recursion.
         handle_circular_dependency(spreadsheet, parent, timestamp);
         return Ok(());
     }
 
+    // Add the parent to the path to keep track of the cells that has been
+    // visited in this call.
     path.push(parent.to_string());
 
+    // Get the dependencies of the parent cell. If there are no dependencies,
+    // then it defaults to an empty vec.
     let dependencies = spreadsheet.get_dependencies(parent).unwrap_or_default();
 
-    // Update that children and then update their children recursively.
+    // Update these dependencies with the new values.
     for dep in dependencies {
         let expr = match spreadsheet.get_cell_expr(&dep) {
             Some(expr) => expr,
             None => {
                 // If there is no expression, then skip the cell. Realistically,
                 // this shouldn't happen since if there is a dependency, there
-                // should be an expression. However, this is a safety check.
+                // should be an expression.
                 continue;
             }
         };
         let runner = CommandRunner::new(&expr);
         let vars = runner.find_variables();
         let var_map = variable_map_for_runner(spreadsheet, &vars);
-
         let cell_val = runner.run(&var_map);
+
+        // If there aren't any variables, then its a scalar value and we set
+        // the cell value directly. Otherwise, we need to store the expression.
         match vars.is_empty() {
             true => spreadsheet.set_cell(&dep, cell_val, None, timestamp),
             false => spreadsheet.set_cell(&dep, cell_val, Some(expr), timestamp),
@@ -101,6 +160,18 @@ pub fn update_dependency(
 
 /// Handles updating dependencies with the circular dependency error.
 ///
+/// # Example
+///
+/// ```rust
+/// use std::sync::Arc;
+/// use rsheet_lib::spreadsheet::Spreadsheet;
+/// use rsheet_server::commands::dependencies::handle_circular_dependency;
+/// use rsheet_lib::cells::CellValue;
+///
+/// let spreadsheet = spreadsheet::new_shared_spreadsheet();
+/// handle_circular_dependency(&spreadsheet, "A1", 0);
+/// assert_eq!(spreadsheet.get_cell_val("A1"), CellValue::Error("Cell A1 is self-referential".to_string()));
+/// ```
 fn handle_circular_dependency(spreadsheet: &Arc<Spreadsheet>, parent: &str, timestamp: u64) {
     spreadsheet.set_cell(
         parent,

@@ -7,7 +7,7 @@ use rsheet_lib::{
 
 use crate::{
     commands::{
-        dependencies::{add_as_dependent, remove_all_dependencies, update_dependency},
+        dependencies::{add_dependencies, remove_all_dependencies, update_dependency},
         variables::variable_map_for_runner,
     },
     spreadsheet::Spreadsheet,
@@ -57,13 +57,13 @@ pub fn set(spreadsheet: &Arc<Spreadsheet>, args: Vec<&str>, timestamp: u64) -> R
         match var_type {
             VariableType::Scalar => spreadsheet.add_dependency(var, cell),
             VariableType::VerticalVector(start_col, start_row, end_row) => {
-                add_as_dependent(spreadsheet, cell, start_row, start_col, end_row, start_col)
+                add_dependencies(spreadsheet, cell, start_col, start_row, start_col, end_row)
             }
             VariableType::HorizontalVector(start_row, start_col, end_col) => {
-                add_as_dependent(spreadsheet, cell, start_row, start_col, start_row, end_col)
+                add_dependencies(spreadsheet, cell, start_col, start_row, end_col, start_row)
             }
             VariableType::Matrix((start_col, start_row), (end_col, end_row)) => {
-                add_as_dependent(spreadsheet, cell, start_row, start_col, end_row, end_col)
+                add_dependencies(spreadsheet, cell, start_col, start_row, end_col, end_row)
             }
         }
     }

@@ -57,7 +57,7 @@ impl Spreadsheet {
         let mut cell_entry = self.cells.entry(key.to_string()).or_default();
 
         // If the incoming timestamp is more recent than the cell's timestamp,
-        // then we update the cell.
+        // then we update the cell. Otherwise, we do not update.
         let curr_timestamp = cell_entry.timestamp;
         if inc_timestamp >= curr_timestamp {
             cell_entry.value = value;
@@ -95,14 +95,6 @@ impl Spreadsheet {
         match self.cells.get(key) {
             Some(cell) => cell.expression.clone(),
             None => None,
-        }
-    }
-
-    // TODO: We might not even need this function if we have checks beforehand.
-    pub fn get_cell_timestamp(&self, key: &str) -> u64 {
-        match self.cells.get(key) {
-            Some(cell) => cell.timestamp,
-            None => 0,
         }
     }
 
