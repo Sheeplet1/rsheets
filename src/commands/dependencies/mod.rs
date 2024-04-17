@@ -59,7 +59,7 @@ pub fn update_dependency(
     if path.contains(&parent.to_string()) {
         // If the parent is in the path, then we have found a circular
         // dependency
-        handle_circular_dependency(spreadsheet, parent);
+        handle_circular_dependency(spreadsheet, parent, timestamp);
         return Ok(());
     }
 
@@ -99,13 +99,14 @@ pub fn update_dependency(
     Ok(())
 }
 
-fn handle_circular_dependency(spreadsheet: &Arc<Spreadsheet>, parent: &str) {
-    let parent_timestamp = spreadsheet.get_cell_timestamp(parent);
+/// Handles updating dependencies with the circular dependency error.
+///
+fn handle_circular_dependency(spreadsheet: &Arc<Spreadsheet>, parent: &str, timestamp: usize) {
     spreadsheet.set_cell(
         parent,
         CellValue::Error(format!("Cell {} is self-referential", parent)),
         Some("Circular Dependency".to_string()),
-        parent_timestamp,
+        timestamp,
     );
 
     // Each dependency could have its own dependencies, so we need to also
@@ -114,12 +115,11 @@ fn handle_circular_dependency(spreadsheet: &Arc<Spreadsheet>, parent: &str) {
     // dependencies.
     let dependencies = spreadsheet.get_dependencies(parent).unwrap_or_default();
     for dep in dependencies {
-        let dep_timestamp = spreadsheet.get_cell_timestamp(&dep);
         spreadsheet.set_cell(
             &dep,
             CellValue::Error(format!("Cell {} is involved in a circular dependency", dep)),
             Some("Circular Dependency".to_string()),
-            dep_timestamp,
+            timestamp,
         );
     }
 }
