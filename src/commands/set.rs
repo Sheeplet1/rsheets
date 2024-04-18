@@ -17,7 +17,26 @@ use crate::{
 use super::variables::{categorize_variable, VariableType};
 
 /// Sets the value of a cell in the spreadsheet.
+///
+/// # Example
+///
+/// ```rust
+/// use std::sync::Arc;
+/// use rsheet_lib::command_runner::CellValue;
+/// use rsheet_server::spreadsheet::Spreadsheet;
+/// use rsheet_server::commands::set::set;
+/// use rsheet_server::commands::get::get;
+///
+/// let spreadsheet = spreadsheet::new_shared_spreadsheet();
+/// let result = set(&spreadsheet, vec!["set", "A1", "5"], 0);
+/// assert!(result.is_ok());
+///
+/// let (cell, cell_val) = get(&spreadsheet, vec!["get", "A1"]).unwrap();
+/// assert_eq!(cell, "A1");
+/// assert_eq!(cell_val, CellValue::Int(5));
+/// ```
 pub fn set(spreadsheet: &Arc<Spreadsheet>, args: Vec<&str>, timestamp: u64) -> Result<(), Reply> {
+    // Set should have at least 3 arguments: <set> <cell> <expression>
     if args.len() < 3 {
         return Err(Reply::Error(
             "Invalid number of arguments supplied for set".to_string(),
@@ -34,9 +53,8 @@ pub fn set(spreadsheet: &Arc<Spreadsheet>, args: Vec<&str>, timestamp: u64) -> R
     let expr = args[2..].join(" ");
     let runner = CommandRunner::new(&expr);
 
-    // When we set the cell again, we destroy all parent-child links and then
-    // reconstruct them. This is done by getting the old expression and removing
-    // all links associated with the old variables.
+    // When we set the cell again, we remove all dependencies associated with
+    // the old expression.
     remove_all_dependencies(spreadsheet, cell, &expr);
 
     let vars = runner.find_variables();
