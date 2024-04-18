@@ -23,9 +23,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         let addr = resolve_address(&addr)?;
         let manager = ConnectionManager::launch(addr.ip(), addr.port());
 
-        start_server(manager)
+        start_server(manager);
+        Ok(())
     } else {
         let manager = TerminalManager::launch(args.mark_mode);
-        start_server(manager)
+        start_server(manager);
+        Ok(())
     }
 }

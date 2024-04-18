@@ -7,11 +7,78 @@ to receive marks for the Design Questions.
 
 ## Question 1:
 
+How did you represent commands within your program? Identify an alternative 
+representation, and either justify your choice; or explain why that alternative
+representation would be better.
+
+### Answer:
+
+I represented commands as strings. An alternative representation would be to use 
+an enum to represent the commands. This would be better because it allows
+for typechecking and clarifies the code.
+
 ## Question 2:
+
+Point to where you handle Scalar, Vector and Matrix variables. How much 
+duplication of code did the Scalar, Vector and Matrix variables require? 
+Could you have improved this?
+
+### Answer:
+
+I handled Scalar, Vector and Matrix variables in the `Variable` class. 
+
+I believe that Scalar didn't require any duplication of code as it was only one
+value from the spreadsheet.
+
+Vector and Matrix required some "duplication" of code, where it appears 
+extremely similar but the resulting values were Vec<T> and Vec<Vec<T>>.
+
+If I was to combine the creation of the vectors for both Vector and Matrix, 
+I believe it would have made the code more complicated and harder to read.
 
 ## Question 3:
 
+Point out the lines of code that include any concurrent data structures. 
+Contrast how your code would look if you were to make this assignment single-threaded.
+
+### Answer:
+
+There are multiple lines of code where concurrent data structures are used.
+
+The `Spreadsheet` class, located in `spreadsheet/mod.rs` uses `DashMap` for the 
+cells and the dependencies, which handles concurrency. `DashMap` is a performant 
+replacement for `RwLock<HashMap<K, V>>`.
+
+It also has a function, `new_shared_spreadsheet` to create an Arc instance of
+the `Spreadsheet` struct to allow for concurrent access to the spreadsheet.
+
+In `lib.rs`, threads are managed using `rayon` to allow for parallelism.
+Specifically, we are using `ThreadPool` to mannage the threads.
+
+If this assignment were to be single-threaded, the `Spreadsheet` struct would
+not need to be wrapped in `Arc` and `rayon` would not be used. Commands would be 
+processed sequentially and the application would suffer performance-wise.
+
 ## Question 4:
+
+What line/lines of code show how you deal with the "complex edge case" in part 4. 
+Justify how your solution ensures you'll never have the problem described.
+
+### Answer:
+
+I added a field to my `Cell` struct that stored the timestamp of the last time 
+the cell was updated. See `spreadsheet/mod.rs`.
+
+I then stored the timestamp for each message in `lib.rs` upon receiving it.
+See `lib.rs/handle_connection`.
+
+This timestamp was passed as a parameter to the function that handled the `set`
+command. This meant that the timestamp was associated with the message 
+directly and was not altered by sleep_then. 
+
+If the timestamp of a command was more recent than the last time the cell 
+was updated, then the command was executed. Otherwise, the command was ignored.
+See `spreadsheet/mod.rs/set_cell`.
 
 ## Question 5:
 
@@ -21,7 +88,15 @@ Remember: you don't have to fill these out; but if
 you want to get feedback on a particular element of
 your code; you can!
 
-1.
+1. I went with ThreadPool for managing threads. However, I did need to increase
+the number of threads to achieve the desired ordering of commands in the 
+autotests to avoid context switching. I was contemplating between using 
+Rayon's Threadpool and a simple implementation where I stored the handles 
+of each `thread::spawn` in a vector, and joined all threads at the end.
+
+I believe ThreadPool is better for performance and resource management, but I 
+wasn't sure on how to manage the ordering of commands. What would you have 
+recommended here?
 
 2.
 
