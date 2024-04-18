@@ -82,6 +82,17 @@ See `spreadsheet/mod.rs/set_cell`.
 
 ## Question 5:
 
+Identify the thread(s) you're using to perform the calculations of updated dependencies. 
+If you used a single thread, identify how would you need to change the code to 
+use multiple threads to calculate dependency updates. If you're using multiple 
+threads, describe how you've done so.
+
+### Answer:
+
+I used multiple threads to perform the calculation of updated dependenices.
+The philosophy behind it was that whichever thread that executed the `set`
+command would be responsible for updating the dependencies of the updated cell.
+
 # Questions to the Marker (OPTIONAL)
 
 Remember: you don't have to fill these out; but if
