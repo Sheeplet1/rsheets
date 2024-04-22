@@ -90,7 +90,7 @@ threads, describe how you've done so.
 ### Answer:
 
 I used multiple threads to perform the calculation of updated dependenices.
-The philosophy behind it was that whichever thread that executed the `set`
+The philosophy behind it was that whichever thread executed the `set`
 command would be responsible for updating the dependencies of the updated cell.
 
 # Questions to the Marker (OPTIONAL)
